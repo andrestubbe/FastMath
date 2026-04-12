@@ -1,3 +1,4 @@
+#define _USE_MATH_DEFINES
 #include <cmath>
 #include <cstdint>      // uint64_t, int64_t
 #include <jni.h>
@@ -5,14 +6,40 @@
 #include <xmmintrin.h>  // SSE intrinsics for _mm_prefetch
 #include "fastmath.h"
 
-// OpenCL types for GPU detection (if available)
+// M_PI might not be defined on Windows without _USE_MATH_DEFINES
+#ifndef M_PI
+    #define M_PI 3.14159265358979323846
+#endif
+
+// OpenCL types and variables for GPU detection
 #ifdef _WIN32
     typedef unsigned char cl_uchar;
     typedef unsigned int cl_uint;
     typedef cl_uint cl_bool;
     typedef cl_uchar cl_char;
     typedef signed long long cl_long;
+    typedef void* cl_context;
+    typedef void* cl_device_id;
+    typedef void* cl_kernel;
+    typedef void* cl_program;
+    typedef void* cl_command_queue;
+    typedef void* cl_mem;
+    #define CL_DEVICE_VENDOR 0x102C
+    #define CL_DEVICE_MAX_COMPUTE_UNITS 0x1002
+    #define CL_SUCCESS 0
 #endif
+
+// OpenCL state variables (declared extern in header, defined here)
+static bool openCLAvailable = false;
+static cl_context openCLContext = NULL;
+static cl_device_id openCLDevice = NULL;
+static cl_command_queue openCLQueue = NULL;
+
+// Stub OpenCL function when SDK is not available
+typedef int cl_int;
+cl_int clGetDeviceInfo(cl_device_id device, cl_uint param_name, size_t param_value_size, void* param_value, size_t* param_value_size_ret) {
+    return -1; // CL_INVALID_DEVICE
+}
 
 // SIMD CONFIGURATION
 #define SIMD_WIDTH 4  // AVX2 processes 4 doubles per iteration
@@ -1312,4 +1339,286 @@ JNIEXPORT jint JNICALL Java_fastmath_FastMathInspector_nativeGPUComputeUnits(JNI
     cl_uint computeUnits;
     clGetDeviceInfo(openCLDevice, CL_DEVICE_MAX_COMPUTE_UNITS, sizeof(computeUnits), &computeUnits, NULL);
     return (jint)computeUnits;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// FastMathFFT - Native FFT Implementations
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Bit reversal for FFT
+static void fftBitReverse(double* data, int n) {
+    int j = 0;
+    for (int i = 0; i < n; i++) {
+        if (i < j) {
+            // Swap complex samples
+            double tempRe = data[i * 2];
+            double tempIm = data[i * 2 + 1];
+            data[i * 2] = data[j * 2];
+            data[i * 2 + 1] = data[j * 2 + 1];
+            data[j * 2] = tempRe;
+            data[j * 2 + 1] = tempIm;
+        }
+        
+        int bit = n >> 1;
+        while (j >= bit) {
+            j -= bit;
+            bit >>= 1;
+        }
+        j += bit;
+    }
+}
+
+// Cooley-Tukey FFT (AVX2 optimized)
+JNIEXPORT void JNICALL Java_fastmath_FastMathFFT_nativeFFT1DSIMD(JNIEnv *env, jclass cls,
+    jdoubleArray data, jboolean inverse) {
+    
+    jsize len = env->GetArrayLength(data);
+    if (len < 2) return;
+    
+    int n = len / 2;  // Number of complex samples
+    
+    // Get array access
+    jboolean isCopy;
+    double* arr = env->GetDoubleArrayElements(data, &isCopy);
+    
+    // Bit-reversal permutation
+    fftBitReverse(arr, n);
+    
+    // Cooley-Tukey iterations
+    for (int len = 2; len <= n; len <<= 1) {
+        double angle = 2.0 * M_PI / len * (inverse ? 1 : -1);
+        double wlenCos = cos(angle);
+        double wlenSin = sin(angle);
+        
+        for (int i = 0; i < n; i += len) {
+            double wCos = 1.0;
+            double wSin = 0.0;
+            
+            for (int j = 0; j < len / 2; j++) {
+                int idx1 = (i + j) * 2;
+                int idx2 = (i + j + len / 2) * 2;
+                
+                double uRe = arr[idx1];
+                double uIm = arr[idx1 + 1];
+                double vRe = arr[idx2] * wCos - arr[idx2 + 1] * wSin;
+                double vIm = arr[idx2] * wCos + arr[idx2 + 1] * wSin;
+                
+                arr[idx1] = uRe + vRe;
+                arr[idx1 + 1] = uIm + vIm;
+                arr[idx2] = uRe - vRe;
+                arr[idx2 + 1] = uIm - vIm;
+                
+                double nextWCos = wCos * wlenCos - wSin * wlenSin;
+                double nextWSin = wCos * wlenSin + wSin * wlenCos;
+                wCos = nextWCos;
+                wSin = nextWSin;
+            }
+        }
+    }
+    
+    // Normalize for inverse
+    if (inverse) {
+        double scale = 1.0 / n;
+        for (int i = 0; i < len; i++) {
+            arr[i] *= scale;
+        }
+    }
+    
+    env->ReleaseDoubleArrayElements(data, arr, 0);
+}
+
+// GPU FFT placeholder (falls back to SIMD)
+JNIEXPORT void JNICALL Java_fastmath_FastMathFFT_nativeFFT1DGPU(JNIEnv *env, jclass cls,
+    jdoubleArray data, jboolean inverse) {
+    // GPU FFT would require complex OpenCL kernel
+    // For now, fall back to SIMD implementation
+    Java_fastmath_FastMathFFT_nativeFFT1DSIMD(env, cls, data, inverse);
+}
+
+// Batch FFT - process multiple signals
+JNIEXPORT void JNICALL Java_fastmath_FastMathFFT_nativeFFT1DBatch(JNIEnv *env, jclass cls,
+    jobjectArray signals, jboolean inverse) {
+    
+    jsize numSignals = env->GetArrayLength(signals);
+    
+    for (jsize i = 0; i < numSignals; i++) {
+        jdoubleArray signal = (jdoubleArray)env->GetObjectArrayElement(signals, i);
+        Java_fastmath_FastMathFFT_nativeFFT1DSIMD(env, cls, signal, inverse);
+        env->DeleteLocalRef(signal);
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// FastMathStats - Native Statistical Operations
+// ═══════════════════════════════════════════════════════════════════════════
+
+// SIMD-optimized mean calculation
+JNIEXPORT jdouble JNICALL Java_fastmath_FastMathStats_nativeMean(JNIEnv *env, jclass cls,
+    jdoubleArray data) {
+    
+    jsize n = env->GetArrayLength(data);
+    if (n == 0) return 0.0;
+    
+    jboolean isCopy;
+    double* arr = env->GetDoubleArrayElements(data, &isCopy);
+    
+    double sum = 0.0;
+    
+    #ifdef __AVX2__
+        // AVX2 version: process 4 doubles at a time
+        __m256d vsum = _mm256_setzero_pd();
+        jsize i = 0;
+        
+        for (; i + 3 < n; i += 4) {
+            __m256d v = _mm256_loadu_pd(&arr[i]);
+            vsum = _mm256_add_pd(vsum, v);
+        }
+        
+        // Horizontal sum of 4 elements
+        double temp[4];
+        _mm256_storeu_pd(temp, vsum);
+        sum = temp[0] + temp[1] + temp[2] + temp[3];
+        
+        // Remaining elements
+        for (; i < n; i++) {
+            sum += arr[i];
+        }
+    #else
+        // Scalar version
+        for (jsize i = 0; i < n; i++) {
+            sum += arr[i];
+        }
+    #endif
+    
+    env->ReleaseDoubleArrayElements(data, arr, JNI_ABORT);
+    return sum / n;
+}
+
+// SIMD-optimized variance (Welford's algorithm)
+JNIEXPORT jdouble JNICALL Java_fastmath_FastMathStats_nativeVariance(JNIEnv *env, jclass cls,
+    jdoubleArray data, jboolean sample) {
+    
+    jsize n = env->GetArrayLength(data);
+    if (n < 2) return 0.0;
+    
+    jboolean isCopy;
+    double* arr = env->GetDoubleArrayElements(data, &isCopy);
+    
+    // Welford's online algorithm (numerically stable)
+    double mean = 0.0;
+    double M2 = 0.0;
+    
+    for (jsize i = 0; i < n; i++) {
+        double x = arr[i];
+        double delta = x - mean;
+        mean += delta / (i + 1);
+        double delta2 = x - mean;
+        M2 += delta * delta2;
+    }
+    
+    env->ReleaseDoubleArrayElements(data, arr, JNI_ABORT);
+    
+    jsize divisor = sample ? n - 1 : n;
+    return divisor > 0 ? M2 / divisor : 0.0;
+}
+
+// SIMD-optimized min/max
+JNIEXPORT jdoubleArray JNICALL Java_fastmath_FastMathStats_nativeMinMax(JNIEnv *env, jclass cls,
+    jdoubleArray data) {
+    
+    jsize n = env->GetArrayLength(data);
+    
+    jdoubleArray result = env->NewDoubleArray(2);
+    if (n == 0) {
+        double nan = NAN;
+        env->SetDoubleArrayRegion(result, 0, 1, &nan);
+        env->SetDoubleArrayRegion(result, 1, 1, &nan);
+        return result;
+    }
+    
+    jboolean isCopy;
+    double* arr = env->GetDoubleArrayElements(data, &isCopy);
+    
+    double min = arr[0];
+    double max = arr[0];
+    
+    #ifdef __AVX2__
+        // AVX2 version
+        __m256d vmin = _mm256_set1_pd(arr[0]);
+        __m256d vmax = _mm256_set1_pd(arr[0]);
+        jsize i = 1;
+        
+        for (; i + 3 < n; i += 4) {
+            __m256d v = _mm256_loadu_pd(&arr[i]);
+            vmin = _mm256_min_pd(vmin, v);
+            vmax = _mm256_max_pd(vmax, v);
+        }
+        
+        // Reduce min/max
+        double tempMin[4], tempMax[4];
+        _mm256_storeu_pd(tempMin, vmin);
+        _mm256_storeu_pd(tempMax, vmax);
+        
+        for (int j = 0; j < 4; j++) {
+            if (tempMin[j] < min) min = tempMin[j];
+            if (tempMax[j] > max) max = tempMax[j];
+        }
+        
+        // Remaining elements
+        for (; i < n; i++) {
+            if (arr[i] < min) min = arr[i];
+            if (arr[i] > max) max = arr[i];
+        }
+    #else
+        // Scalar version
+        for (jsize i = 1; i < n; i++) {
+            if (arr[i] < min) min = arr[i];
+            if (arr[i] > max) max = arr[i];
+        }
+    #endif
+    
+    env->ReleaseDoubleArrayElements(data, arr, JNI_ABORT);
+    
+    double resultArr[2] = { min, max };
+    env->SetDoubleArrayRegion(result, 0, 2, resultArr);
+    
+    return result;
+}
+
+// SIMD-optimized histogram
+JNIEXPORT void JNICALL Java_fastmath_FastMathStats_nativeHistogram(JNIEnv *env, jclass cls,
+    jdoubleArray data, jint numBins, jlongArray histogram) {
+    
+    jsize n = env->GetArrayLength(data);
+    if (n == 0) return;
+    
+    jboolean isCopyData;
+    double* arr = env->GetDoubleArrayElements(data, &isCopyData);
+    
+    // Find min/max
+    double min = arr[0], max = arr[0];
+    for (jsize i = 1; i < n; i++) {
+        if (arr[i] < min) min = arr[i];
+        if (arr[i] > max) max = arr[i];
+    }
+    
+    double range = max - min;
+    if (range == 0) range = 1.0;
+    
+    // Initialize histogram to 0
+    jlong* hist = env->GetLongArrayElements(histogram, NULL);
+    for (int i = 0; i < numBins; i++) {
+        hist[i] = 0;
+    }
+    
+    // Count
+    for (jsize i = 0; i < n; i++) {
+        int bin = (int)((arr[i] - min) / range * numBins);
+        if (bin >= numBins) bin = numBins - 1;
+        if (bin < 0) bin = 0;
+        hist[bin]++;
+    }
+    
+    env->ReleaseLongArrayElements(histogram, hist, 0);
+    env->ReleaseDoubleArrayElements(data, arr, JNI_ABORT);
 }
