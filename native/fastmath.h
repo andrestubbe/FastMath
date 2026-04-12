@@ -48,6 +48,10 @@ JNIEXPORT void JNICALL Java_fastmath_FastMath_nativeLogArray(JNIEnv *env, jclass
 JNIEXPORT jfloat JNICALL Java_fastmath_FastMath_nativeFastInvSqrt(JNIEnv *env, jclass cls, jfloat x);
 JNIEXPORT void JNICALL Java_fastmath_FastMath_nativeFastInvSqrtArray(JNIEnv *env, jclass cls, jfloatArray input, jfloatArray output, jint len);
 
+// OpenCL GPU initialization and dispatch
+JNIEXPORT jboolean JNICALL Java_fastmath_FastMath_initOpenCL(JNIEnv *env, jclass cls);
+JNIEXPORT void JNICALL Java_fastmath_FastMath_gpuSqrtArray(JNIEnv *env, jclass cls, jdoubleArray input, jdoubleArray output, jint len);
+
 #ifdef __cplusplus
 }
 #endif

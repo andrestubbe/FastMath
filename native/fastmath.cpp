@@ -218,6 +218,256 @@ JNIEXPORT void JNICALL Java_fastmath_FastMath_nativeLogArray(JNIEnv *env, jclass
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// OPENCL GPU ACCELERATION
+// Compile kernels at runtime for Intel/AMD/NVIDIA GPUs
+// ═══════════════════════════════════════════════════════════════════════════════
+
+#ifdef _WIN32
+#include <windows.h>
+#endif
+
+// OpenCL function pointer types
+typedef int (*clGetPlatformIDs_fn)(int, void**, int*);
+typedef int (*clGetDeviceIDs_fn)(void*, int, int, void**, int*);
+typedef void* (*clCreateContext_fn)(void*, int, void**, void*, void*, int*);
+typedef int (*clReleaseContext_fn)(void*);
+typedef void* (*clCreateCommandQueue_fn)(void*, void*, int, int*);
+typedef int (*clReleaseCommandQueue_fn)(void*);
+typedef void* (*clCreateBuffer_fn)(void*, int, size_t, void*, int*);
+typedef int (*clReleaseMemObject_fn)(void*);
+typedef int (*clEnqueueWriteBuffer_fn)(void*, void*, int, size_t, size_t, void*, int, void*, void**);
+typedef int (*clEnqueueReadBuffer_fn)(void*, void*, int, size_t, size_t, void*, int, void*, void**);
+typedef void* (*clCreateProgramWithSource_fn)(void*, int, const char**, const size_t*, int*);
+typedef int (*clBuildProgram_fn)(void*, int, void**, const char*, void*, void*);
+typedef void* (*clCreateKernel_fn)(void*, const char*, int*);
+typedef int (*clReleaseKernel_fn)(void*);
+typedef int (*clSetKernelArg_fn)(void*, int, size_t, void*);
+typedef int (*clEnqueueNDRangeKernel_fn)(void*, void*, int, const size_t*, const size_t*, const size_t*, int, void*, void**);
+typedef int (*clFinish_fn)(void*);
+typedef int (*clGetProgramBuildInfo_fn)(void*, void*, int, size_t, void*, size_t*);
+
+// OpenCL constants
+#define CL_PLATFORM_NOT_FOUND_KHR -1001
+#define CL_DEVICE_TYPE_GPU 0x4
+#define CL_DEVICE_TYPE_DEFAULT 0x1
+#define CL_MEM_READ_ONLY 0x10
+#define CL_MEM_WRITE_ONLY 0x20
+#define CL_MEM_READ_WRITE 0x1
+#define CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE 0x1
+#define CL_PROGRAM_BUILD_LOG 0x1183
+#define CL_TRUE 1
+
+// Global OpenCL state (singleton)
+static bool g_openclInitialized = false;
+static void* g_clContext = nullptr;
+static void* g_clQueue = nullptr;
+static void* g_clProgram = nullptr;
+static HMODULE g_openclDLL = nullptr;
+
+// Function pointers
+static clGetPlatformIDs_fn clGetPlatformIDs = nullptr;
+static clGetDeviceIDs_fn clGetDeviceIDs = nullptr;
+static clCreateContext_fn clCreateContext = nullptr;
+static clReleaseContext_fn clReleaseContext = nullptr;
+static int (*clReleaseProgram_fn)(void*) = nullptr;
+static clCreateCommandQueue_fn clCreateCommandQueue = nullptr;
+static clReleaseCommandQueue_fn clReleaseCommandQueue = nullptr;
+static clCreateBuffer_fn clCreateBuffer = nullptr;
+static clReleaseMemObject_fn clReleaseMemObject = nullptr;
+static clEnqueueWriteBuffer_fn clEnqueueWriteBuffer = nullptr;
+static clEnqueueReadBuffer_fn clEnqueueReadBuffer = nullptr;
+static clCreateProgramWithSource_fn clCreateProgramWithSource = nullptr;
+static clBuildProgram_fn clBuildProgram = nullptr;
+static clCreateKernel_fn clCreateKernel = nullptr;
+static clReleaseKernel_fn clReleaseKernel = nullptr;
+static clSetKernelArg_fn clSetKernelArg = nullptr;
+static clEnqueueNDRangeKernel_fn clEnqueueNDRangeKernel = nullptr;
+static clFinish_fn clFinish = nullptr;
+static clGetProgramBuildInfo_fn clGetProgramBuildInfo = nullptr;
+
+// Kernel handles
+static void* g_kernelSqrt = nullptr;
+static void* g_kernelSin = nullptr;
+static void* g_kernelCos = nullptr;
+static void* g_kernelExp = nullptr;
+static void* g_kernelLog = nullptr;
+
+// Load OpenCL DLL and function pointers
+static bool loadOpenCL() {
+#ifdef _WIN32
+    g_openclDLL = LoadLibraryA("OpenCL.dll");
+    if (!g_openclDLL) {
+        return false;
+    }
+    
+    clGetPlatformIDs = (clGetPlatformIDs_fn)GetProcAddress(g_openclDLL, "clGetPlatformIDs");
+    clGetDeviceIDs = (clGetDeviceIDs_fn)GetProcAddress(g_openclDLL, "clGetDeviceIDs");
+    clCreateContext = (clCreateContext_fn)GetProcAddress(g_openclDLL, "clCreateContext");
+    clReleaseContext = (clReleaseContext_fn)GetProcAddress(g_openclDLL, "clReleaseContext");
+    clCreateCommandQueue = (clCreateCommandQueue_fn)GetProcAddress(g_openclDLL, "clCreateCommandQueue");
+    clReleaseCommandQueue = (clReleaseCommandQueue_fn)GetProcAddress(g_openclDLL, "clReleaseCommandQueue");
+    clCreateBuffer = (clCreateBuffer_fn)GetProcAddress(g_openclDLL, "clCreateBuffer");
+    clReleaseMemObject = (clReleaseMemObject_fn)GetProcAddress(g_openclDLL, "clReleaseMemObject");
+    clEnqueueWriteBuffer = (clEnqueueWriteBuffer_fn)GetProcAddress(g_openclDLL, "clEnqueueWriteBuffer");
+    clEnqueueReadBuffer = (clEnqueueReadBuffer_fn)GetProcAddress(g_openclDLL, "clEnqueueReadBuffer");
+    clCreateProgramWithSource = (clCreateProgramWithSource_fn)GetProcAddress(g_openclDLL, "clCreateProgramWithSource");
+    clBuildProgram = (clBuildProgram_fn)GetProcAddress(g_openclDLL, "clBuildProgram");
+    clCreateKernel = (clCreateKernel_fn)GetProcAddress(g_openclDLL, "clCreateKernel");
+    clReleaseKernel = (clReleaseKernel_fn)GetProcAddress(g_openclDLL, "clReleaseKernel");
+    clSetKernelArg = (clSetKernelArg_fn)GetProcAddress(g_openclDLL, "clSetKernelArg");
+    clEnqueueNDRangeKernel = (clEnqueueNDRangeKernel_fn)GetProcAddress(g_openclDLL, "clEnqueueNDRangeKernel");
+    clFinish = (clFinish_fn)GetProcAddress(g_openclDLL, "clFinish");
+    clGetProgramBuildInfo = (clGetProgramBuildInfo_fn)GetProcAddress(g_openclDLL, "clGetProgramBuildInfo");
+    clReleaseProgram_fn = (int (*)(void*))GetProcAddress(g_openclDLL, "clReleaseProgram");
+    
+    return clGetPlatformIDs && clGetDeviceIDs && clCreateContext && clCreateCommandQueue;
+#else
+    return false; // Linux/Mac not yet supported
+#endif
+}
+
+// Initialize OpenCL context and compile kernels
+JNIEXPORT jboolean JNICALL Java_fastmath_FastMath_initOpenCL(JNIEnv *env, jclass cls) {
+    if (g_openclInitialized) {
+        return JNI_TRUE;
+    }
+    
+    if (!loadOpenCL()) {
+        return JNI_FALSE;
+    }
+    
+    // Get platform
+    void* platform = nullptr;
+    int numPlatforms = 0;
+    int err = clGetPlatformIDs(1, &platform, &numPlatforms);
+    if (err != 0 || numPlatforms == 0) {
+        return JNI_FALSE;
+    }
+    
+    // Get GPU device
+    void* device = nullptr;
+    int numDevices = 0;
+    err = clGetDeviceIDs(platform, CL_DEVICE_TYPE_GPU, 1, &device, &numDevices);
+    if (err != 0 || numDevices == 0) {
+        // Try default device
+        err = clGetDeviceIDs(platform, CL_DEVICE_TYPE_DEFAULT, 1, &device, &numDevices);
+        if (err != 0 || numDevices == 0) {
+            return JNI_FALSE;
+        }
+    }
+    
+    // Create context
+    g_clContext = clCreateContext(nullptr, 1, &device, nullptr, nullptr, &err);
+    if (err != 0 || !g_clContext) {
+        return JNI_FALSE;
+    }
+    
+    // Create command queue
+    g_clQueue = clCreateCommandQueue(g_clContext, device, 0, &err);
+    if (err != 0 || !g_clQueue) {
+        clReleaseContext(g_clContext);
+        return JNI_FALSE;
+    }
+    
+    // Kernel source (embedded for now - could be loaded from file)
+    const char* kernelSource = 
+        "__kernel void sqrtArray(__global const double* input, __global double* output, const int len) {\n"
+        "    int id = get_global_id(0);\n"
+        "    if (id < len) output[id] = sqrt(input[id]);\n"
+        "}\n"
+        "__kernel void sinArray(__global const double* input, __global double* output, const int len) {\n"
+        "    int id = get_global_id(0);\n"
+        "    if (id < len) output[id] = sin(input[id]);\n"
+        "}\n"
+        "__kernel void cosArray(__global const double* input, __global double* output, const int len) {\n"
+        "    int id = get_global_id(0);\n"
+        "    if (id < len) output[id] = cos(input[id]);\n"
+        "}\n"
+        "__kernel void expArray(__global const double* input, __global double* output, const int len) {\n"
+        "    int id = get_global_id(0);\n"
+        "    if (id < len) output[id] = exp(input[id]);\n"
+        "}\n"
+        "__kernel void logArray(__global const double* input, __global double* output, const int len) {\n"
+        "    int id = get_global_id(0);\n"
+        "    if (id < len) output[id] = log(input[id]);\n"
+        "}\n";
+    
+    // Create program
+    size_t sourceLen = strlen(kernelSource);
+    g_clProgram = clCreateProgramWithSource(g_clContext, 1, &kernelSource, &sourceLen, &err);
+    if (err != 0 || !g_clProgram) {
+        clReleaseCommandQueue(g_clQueue);
+        clReleaseContext(g_clContext);
+        return JNI_FALSE;
+    }
+    
+    // Build program
+    err = clBuildProgram(g_clProgram, 1, &device, nullptr, nullptr, nullptr);
+    if (err != 0) {
+        clReleaseProgram_fn(g_clProgram);
+        clReleaseCommandQueue(g_clQueue);
+        clReleaseContext(g_clContext);
+        return JNI_FALSE;
+    }
+    
+    // Create kernels
+    g_kernelSqrt = clCreateKernel(g_clProgram, "sqrtArray", &err);
+    g_kernelSin = clCreateKernel(g_clProgram, "sinArray", &err);
+    g_kernelCos = clCreateKernel(g_clProgram, "cosArray", &err);
+    g_kernelExp = clCreateKernel(g_clProgram, "expArray", &err);
+    g_kernelLog = clCreateKernel(g_clProgram, "logArray", &err);
+    
+    g_openclInitialized = true;
+    return JNI_TRUE;
+}
+
+// GPU-accelerated sqrt array
+JNIEXPORT void JNICALL Java_fastmath_FastMath_gpuSqrtArray(JNIEnv *env, jclass cls, jdoubleArray input, jdoubleArray output, jint len) {
+    if (!g_openclInitialized || !g_kernelSqrt) {
+        // Fallback to CPU
+        Java_fastmath_FastMath_nativeSqrtArray(env, cls, input, output, len);
+        return;
+    }
+    
+    jdouble* in = (jdouble*) env->GetPrimitiveArrayCritical(input, nullptr);
+    jdouble* out = (jdouble*) env->GetPrimitiveArrayCritical(output, nullptr);
+    
+    if (!in || !out) {
+        if (in) env->ReleasePrimitiveArrayCritical(input, in, JNI_ABORT);
+        if (out) env->ReleasePrimitiveArrayCritical(output, out, 0);
+        return;
+    }
+    
+    // Create OpenCL buffers
+    int err;
+    void* inBuffer = clCreateBuffer(g_clContext, CL_MEM_READ_ONLY, len * sizeof(double), nullptr, &err);
+    void* outBuffer = clCreateBuffer(g_clContext, CL_MEM_WRITE_ONLY, len * sizeof(double), nullptr, &err);
+    
+    // Copy data to GPU
+    clEnqueueWriteBuffer(g_clQueue, inBuffer, CL_TRUE, 0, len * sizeof(double), in, 0, nullptr, nullptr);
+    
+    // Set kernel arguments
+    clSetKernelArg(g_kernelSqrt, 0, sizeof(void*), &inBuffer);
+    clSetKernelArg(g_kernelSqrt, 1, sizeof(void*), &outBuffer);
+    clSetKernelArg(g_kernelSqrt, 2, sizeof(int), &len);
+    
+    // Execute kernel
+    size_t globalSize = len;
+    clEnqueueNDRangeKernel(g_clQueue, g_kernelSqrt, 1, nullptr, &globalSize, nullptr, 0, nullptr, nullptr);
+    clFinish(g_clQueue);
+    
+    // Read results
+    clEnqueueReadBuffer(g_clQueue, outBuffer, CL_TRUE, 0, len * sizeof(double), out, 0, nullptr, nullptr);
+    
+    // Cleanup
+    clReleaseMemObject(inBuffer);
+    clReleaseMemObject(outBuffer);
+    
+    env->ReleasePrimitiveArrayCritical(input, in, JNI_ABORT);
+    env->ReleasePrimitiveArrayCritical(output, out, 0);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // FAST INVERSE SQUARE ROOT (Quake III Arena algorithm)
 // Legendary bit-hack trick: ~10x faster than 1.0f/sqrtf(x)
 // ═══════════════════════════════════════════════════════════════════════════════

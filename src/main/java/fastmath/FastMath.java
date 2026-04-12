@@ -84,6 +84,10 @@ public class FastMath {
     
     // Native method declarations
     
+    // OpenCL GPU
+    private static native boolean initOpenCL();
+    private static native void gpuSqrtArray(double[] input, double[] output, int len);
+    
     // Trigonometric
     private static native double nativeSin(double x);
     private static native double nativeCos(double x);
@@ -366,8 +370,7 @@ public class FastMath {
      */
     private static void sqrtSmart(double[] input, double[] output) {
         if (GPU_AVAILABLE && input.length >= GPU_THRESHOLD) {
-            // TODO: GPU dispatch
-            sqrt(input, output); // Fallback to JNI for now
+            gpuSqrtArray(input, output, input.length);
         } else if (NATIVE_AVAILABLE) {
             nativeSqrtArray(input, output, input.length);
         } else {
