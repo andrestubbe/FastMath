@@ -96,10 +96,16 @@ x *= invLen; y *= invLen; z *= invLen;  // Normalized!
 - Complex math functions (pow, atan2, sinh)
 - Games: Vector normalization, distance checks, physics
 
-**⚡ Coming Soon:**
-- SIMD-optimized arrays (process 4 doubles at once)
-- GPU offload for 10K+ element arrays
-- Fast inverse sqrt for games (Quake-style approximation)
+### Alternatives
+
+| Library | Approach | Best For |
+|---------|----------|----------|
+| **[Jafama](https://github.com/jeffhain/jafama)** | Pure Java approximations | Scalar ops (no JNI overhead) |
+| **Apache Commons Math** | Polynomial approximations | General math, strict accuracy |
+| **FastMath (this)** | JNI + AVX2 SIMD + GPU | **Batch arrays, games, GPU offload** |
+
+**Choose Jafama** for scalar-heavy code where JNI call overhead matters.  
+**Choose FastMath** for batch array processing where SIMD and GPU can shine.
 
 ---
 
