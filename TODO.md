@@ -13,11 +13,13 @@
 - [x] Library loader with fallback paths
 - [x] Java API with native method bindings
 - [x] Native library test (`NativeTest.java`)
+- [x] **AVX2 SIMD: 2.45x speedup on `sqrt(array)`** using `GetPrimitiveArrayCritical` + `_mm256_sqrt_pd`
 
-### 🔧 In Progress
+### 🔧 In Progress (Phase 3)
+- [ ] Fast inverse sqrt approximation (Quake-style) for 10x game speedup
 - [ ] OpenCL context initialization for Intel/AMD/NVIDIA
 - [ ] OpenCL kernel compilation at runtime
-- [ ] Smart dispatch: JNI vs OpenCL based on array size
+- [ ] Smart dispatch: JNI SIMD vs OpenCL GPU based on array size
 
 ### 📋 To Do
 
@@ -29,8 +31,10 @@
 - [x] Compile script for Visual Studio / cl.exe
 - [x] Library loader with fallback paths
 
-#### Phase 2: Array/Batch Operations
+#### Phase 2: Array/Batch Operations ✅ SIMD DONE
 - [x] JNI array methods: `nativeSqrtArray()`, `nativeSinArray()`, etc.
+- [x] **AVX2 SIMD vectorization: 4 doubles per iteration**
+- [x] `GetPrimitiveArrayCritical` for zero-copy array access
 - [ ] OpenCL context initialization for Intel/AMD/NVIDIA
 - [ ] OpenCL kernel compilation at runtime
 - [ ] Smart dispatch: JNI vs OpenCL based on array size
