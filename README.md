@@ -69,18 +69,25 @@ mvn test-compile exec:java -Dexec.mainClass="fastmath.ComprehensiveBenchmark" \
   -Dexec.vmArgs="-Djava.library.path=build -Dfastmath.gpu=true"
 ```
 
-### Quick Stats
+### Quick Stats — Java Math vs FastMath
 
-| Operation | Array Size | Java Math | FastMath | Speedup | Implementation |
-|-----------|------------|-----------|----------|---------|----------------|
-| `sqrt(array)` | 100 | 0.05 ms | **0.02 ms** | **2.5x** | JNI SIMD |
-| `sqrt(array)` | 1,000 | 0.5 ms | **0.15 ms** | **3.3x** | JNI SIMD |
-| `sqrt(array)` | 100K | 50 ms | **20 ms** | **2.5x** | CPU AVX2 + Prefetch |
-| `sqrt(array)` | 1M | 500 ms | **12 ms** | **40x** | **GPU OpenCL** (256 threads) |
-| `sin(array)` | 100K | 109 ms | **68 ms** | **1.6x** | Unrolled(4x) + Prefetch |
-| `sin(array)` | 1M | 1100 ms | **28 ms** | **40x** | **GPU** + fast-math flags |
-| `exp(array)` | 1M | 1200 ms | **30 ms** | **40x** | **GPU** + mad-enable |
-| `fastInvSqrt(x)` | scalar | 25+ ns | **2-3 ns** | **~10x** | Quake bit-hack |
+**Run it yourself:** `mvn test-compile exec:java -Dexec.mainClass="fastmath.ComparisonBenchmark"`
+
+| Operation | Java Math | FastMath | Speedup | Winner |
+|-----------|-----------|----------|---------|--------|
+| **Scalar (single value)** |||||
+| `sqrt(x)` | 0.39 ns | 8.74 ns | **0.04x** ❌ | Java (JVM intrinsics) |
+| `sin(x)` | 11.26 ns | 20.50 ns | **0.55x** ❌ | Java (JVM intrinsics) |
+| `exp(x)` | 13.00 ns | 17.49 ns | **0.74x** ❌ | Java (JVM intrinsics) |
+| **Array/Batch (100K elements)** |||||
+| `sqrt(array)` | 2.45 ns/elem | **1.11 ns/elem** | **2.21x** ✅ | FastMath (SIMD) |
+| `sin(array)` | 14.98 ns/elem | **7.23 ns/elem** | **2.07x** ✅ | FastMath (SIMD) |
+| `exp(array)` | 9.54 ns/elem | 9.05 ns/elem | **1.05x** ~ | Similar |
+| **Vector/Matrix (Batch)** |||||
+| `dot3Batch(5K)` | 0.21 ms | **0.01 ms** | **19.6x** ✅ | FastMath (AVX2) |
+| `mul4x4Batch(10K)` | 0.30 ms | **0.06 ms** | **5.0x** ✅ | FastMath (AVX2) |
+| **Random (1M values)** |||||
+| `nextDouble` | 31.37 ms | **1.22 ms** | **25.8x** ✅ | FastMath (Xoshiro256**) |
 
 **New Optimizations Applied:**
 - **GPU Work Groups**: 256 threads per group (optimal occupancy)
