@@ -33,11 +33,15 @@ FastMath.sqrt(positions, distances);  // AVX2 optimized
 
 ## Architecture
 
-| Layer | Technology | When Used |
-|-------|------------|-----------|
-| **Fallback** | Pure Java `Math` | When native libs unavailable |
-| **JNI (SIMD)** | C++ with SSE/AVX | Single values, small arrays (< 1000) |
-| **GPU (OpenCL)** | Intel/AMD/NVIDIA via OpenCL | Large arrays (> 1000 elements) |
+| Layer | Technology | When Used | Speedup |
+|-------|------------|-----------|---------|
+| **Pure Java** | Polynomial approximations (Jafama-style) | Scalar ops: `sin(x)`, `exp(x)` | 2-3x |
+| **JNI SIMD** | C++ AVX2 intrinsics | Arrays: `sqrt(array)` | 2.5x |
+| **GPU OpenCL** | Intel/AMD/NVIDIA kernels | Large arrays (>10K elements) | 10-100x |
+| **Quake Legend** | `0x5f3759df` bit-hack | `fastInvSqrt(x)` for games | ~10x |
+| **Fallback** | `java.lang.Math` | When nothing else works | 1x |
+
+**Smart dispatch:** Scalar ops use pure Java (no JNI overhead). Arrays use SIMD/GPU.
 
 ---
 
