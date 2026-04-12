@@ -273,6 +273,65 @@ public class FastMath {
     }
     
     // ============================================================================
+    // PUBLIC API - Exact Arithmetic (throw on overflow)
+    // ============================================================================
+    
+    public static int addExact(int x, int y) { return Math.addExact(x, y); }
+    public static long addExact(long x, long y) { return Math.addExact(x, y); }
+    public static int subtractExact(int x, int y) { return Math.subtractExact(x, y); }
+    public static long subtractExact(long x, long y) { return Math.subtractExact(x, y); }
+    public static int multiplyExact(int x, int y) { return Math.multiplyExact(x, y); }
+    public static long multiplyExact(long x, int y) { return Math.multiplyExact(x, y); }
+    public static long multiplyExact(long x, long y) { return Math.multiplyExact(x, y); }
+    public static int incrementExact(int a) { return Math.incrementExact(a); }
+    public static long incrementExact(long a) { return Math.incrementExact(a); }
+    public static int decrementExact(int a) { return Math.decrementExact(a); }
+    public static long decrementExact(long a) { return Math.decrementExact(a); }
+    public static int negateExact(int a) { return Math.negateExact(a); }
+    public static long negateExact(long a) { return Math.negateExact(a); }
+    public static int absExact(int a) { return Math.absExact(a); }
+    public static long absExact(long a) { return Math.absExact(a); }
+    public static int toIntExact(long value) { return Math.toIntExact(value); }
+    public static long multiplyFull(int x, int y) { return Math.multiplyFull(x, y); }
+    public static long multiplyHigh(long x, long y) { return Math.multiplyHigh(x, y); }
+    
+    // ============================================================================
+    // PUBLIC API - Floor Division & Modulo
+    // ============================================================================
+    
+    public static int floorDiv(int x, int y) { return Math.floorDiv(x, y); }
+    public static long floorDiv(long x, int y) { return Math.floorDiv(x, y); }
+    public static long floorDiv(long x, long y) { return Math.floorDiv(x, y); }
+    public static int floorMod(int x, int y) { return Math.floorMod(x, y); }
+    public static int floorMod(long x, int y) { return Math.floorMod(x, y); }
+    public static long floorMod(long x, long y) { return Math.floorMod(x, y); }
+    
+    // ============================================================================
+    // PUBLIC API - Floating Point Utilities
+    // ============================================================================
+    
+    public static double copySign(double magnitude, double sign) { return Math.copySign(magnitude, sign); }
+    public static float copySign(float magnitude, float sign) { return Math.copySign(magnitude, sign); }
+    public static double fma(double a, double b, double c) { return Math.fma(a, b, c); }
+    public static float fma(float a, float b, float c) { return Math.fma(a, b, c); }
+    public static int getExponent(double d) { return Math.getExponent(d); }
+    public static int getExponent(float f) { return Math.getExponent(f); }
+    public static double IEEEremainder(double f1, double f2) { return Math.IEEEremainder(f1, f2); }
+    public static double nextAfter(double start, double direction) { return Math.nextAfter(start, direction); }
+    public static float nextAfter(float start, double direction) { return Math.nextAfter(start, direction); }
+    public static double nextUp(double d) { return Math.nextUp(d); }
+    public static float nextUp(float f) { return Math.nextUp(f); }
+    public static double nextDown(double d) { return Math.nextDown(d); }
+    public static float nextDown(float f) { return Math.nextDown(f); }
+    public static double scalb(double d, int scaleFactor) { return Math.scalb(d, scaleFactor); }
+    public static float scalb(float f, int scaleFactor) { return Math.scalb(f, scaleFactor); }
+    public static double signum(double d) { return Math.signum(d); }
+    public static float signum(float f) { return Math.signum(f); }
+    public static double ulp(double d) { return Math.ulp(d); }
+    public static float ulp(float f) { return Math.ulp(f); }
+    public static double random() { return Math.random(); }
+    
+    // ============================================================================
     // PUBLIC API - Array Operations (Batch Processing)
     // ============================================================================
     
