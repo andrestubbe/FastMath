@@ -30,6 +30,13 @@ public class NativeTest {
             }
             System.out.println();
             
+            System.out.println("\nTesting fast inverse sqrt (Quake algorithm):");
+            float test = 4.0f;
+            float invSqrt = FastMath.fastInvSqrt(test);
+            float expected = 1.0f / (float)Math.sqrt(test);  // Should be 0.5
+            System.out.println("fastInvSqrt(" + test + ") = " + invSqrt + " (expected: " + expected + ")");
+            System.out.println("Error: " + (Math.abs(invSqrt - expected) / expected * 100) + "%");
+            
             System.out.println("\n✅ Native library working!");
         } else {
             System.out.println("\n⚠️  Native library NOT loaded - using Math fallback");
