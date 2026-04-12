@@ -1,6 +1,7 @@
 #include <cmath>
 #include <jni.h>
 #include <immintrin.h>  // AVX2 intrinsics
+#include <xmmintrin.h>  // SSE intrinsics for _mm_prefetch
 #include "fastmath.h"
 
 // SIMD CONFIGURATION
@@ -113,8 +114,14 @@ JNIEXPORT void JNICALL Java_fastmath_FastMath_nativeSqrtArray(JNIEnv *env, jclas
     int i = 0;
     int simdEnd = len - (SIMD_WIDTH - 1);
     
-    // AVX2 vectorized path: 4x throughput
+    // AVX2 vectorized path: 4x throughput with prefetching
+    // Prefetch 8 cache lines ahead (512 bytes = 64 doubles)
     for (; i < simdEnd; i += SIMD_WIDTH) {
+        // Prefetch next iteration's data (8 cache lines ahead)
+        if (i + 64 < simdEnd) {
+            _mm_prefetch((const char*)&in[i + 64], _MM_HINT_T0);
+        }
+        
         __m256d vec = _mm256_loadu_pd(&in[i]);      // Load 4 doubles
         __m256d result = _mm256_sqrt_pd(vec);       // 4 sqrt operations in 1 instruction
         _mm256_storeu_pd(&out[i], result);          // Store 4 results
@@ -145,6 +152,10 @@ JNIEXPORT void JNICALL Java_fastmath_FastMath_nativeSinArray(JNIEnv *env, jclass
     int unrollEnd = len - (UNROLL_FACTOR - 1);
     
     for (; i < unrollEnd; i += UNROLL_FACTOR) {
+        // Prefetch 8 cache lines ahead
+        if (i + 64 < unrollEnd) {
+            _mm_prefetch((const char*)&in[i + 64], _MM_HINT_T0);
+        }
         out[i] = std::sin(in[i]);
         out[i+1] = std::sin(in[i+1]);
         out[i+2] = std::sin(in[i+2]);
@@ -153,6 +164,39 @@ JNIEXPORT void JNICALL Java_fastmath_FastMath_nativeSinArray(JNIEnv *env, jclass
     
     for (; i < len; i++) {
         out[i] = std::sin(in[i]);
+    }
+    
+    env->ReleasePrimitiveArrayCritical(input, in, JNI_ABORT);
+    env->ReleasePrimitiveArrayCritical(output, out, 0);
+}
+
+// cos() with 4x unrolled loop using critical sections
+JNIEXPORT void JNICALL Java_fastmath_FastMath_nativeCosArray(JNIEnv *env, jclass cls, jdoubleArray input, jdoubleArray output, jint len) {
+    jdouble* in = (jdouble*) env->GetPrimitiveArrayCritical(input, nullptr);
+    jdouble* out = (jdouble*) env->GetPrimitiveArrayCritical(output, nullptr);
+    
+    if (in == nullptr || out == nullptr) {
+        if (in) env->ReleasePrimitiveArrayCritical(input, in, JNI_ABORT);
+        if (out) env->ReleasePrimitiveArrayCritical(output, out, 0);
+        return;
+    }
+    
+    int i = 0;
+    int unrollEnd = len - (UNROLL_FACTOR - 1);
+    
+    for (; i < unrollEnd; i += UNROLL_FACTOR) {
+        // Prefetch 8 cache lines ahead
+        if (i + 64 < unrollEnd) {
+            _mm_prefetch((const char*)&in[i + 64], _MM_HINT_T0);
+        }
+        out[i] = std::cos(in[i]);
+        out[i+1] = std::cos(in[i+1]);
+        out[i+2] = std::cos(in[i+2]);
+        out[i+3] = std::cos(in[i+3]);
+    }
+    
+    for (; i < len; i++) {
+        out[i] = std::cos(in[i]);
     }
     
     env->ReleasePrimitiveArrayCritical(input, in, JNI_ABORT);
@@ -174,6 +218,10 @@ JNIEXPORT void JNICALL Java_fastmath_FastMath_nativeExpArray(JNIEnv *env, jclass
     int unrollEnd = len - (UNROLL_FACTOR - 1);
     
     for (; i < unrollEnd; i += UNROLL_FACTOR) {
+        // Prefetch 8 cache lines ahead
+        if (i + 64 < unrollEnd) {
+            _mm_prefetch((const char*)&in[i + 64], _MM_HINT_T0);
+        }
         out[i] = std::exp(in[i]);
         out[i+1] = std::exp(in[i+1]);
         out[i+2] = std::exp(in[i+2]);
@@ -203,6 +251,10 @@ JNIEXPORT void JNICALL Java_fastmath_FastMath_nativeLogArray(JNIEnv *env, jclass
     int unrollEnd = len - (UNROLL_FACTOR - 1);
     
     for (; i < unrollEnd; i += UNROLL_FACTOR) {
+        // Prefetch 8 cache lines ahead
+        if (i + 64 < unrollEnd) {
+            _mm_prefetch((const char*)&in[i + 64], _MM_HINT_T0);
+        }
         out[i] = std::log(in[i]);
         out[i+1] = std::log(in[i+1]);
         out[i+2] = std::log(in[i+2]);
@@ -401,8 +453,11 @@ JNIEXPORT jboolean JNICALL Java_fastmath_FastMath_initOpenCL(JNIEnv *env, jclass
         return JNI_FALSE;
     }
     
-    // Build program
-    err = clBuildProgram(g_clProgram, 1, &device, nullptr, nullptr, nullptr);
+    // Build program with fast-math optimizations
+    // -cl-fast-relaxed-math: allows faster but less precise math
+    // -cl-mad-enable: allow mad (multiply-add) optimizations
+    const char* buildOptions = "-cl-fast-relaxed-math -cl-mad-enable";
+    err = clBuildProgram(g_clProgram, 1, &device, buildOptions, nullptr, nullptr);
     if (err != 0) {
         clReleaseProgram_fn(g_clProgram);
         clReleaseCommandQueue(g_clQueue);
@@ -451,9 +506,11 @@ JNIEXPORT void JNICALL Java_fastmath_FastMath_gpuSqrtArray(JNIEnv *env, jclass c
     clSetKernelArg(g_kernelSqrt, 1, sizeof(void*), &outBuffer);
     clSetKernelArg(g_kernelSqrt, 2, sizeof(int), &len);
     
-    // Execute kernel
-    size_t globalSize = len;
-    clEnqueueNDRangeKernel(g_clQueue, g_kernelSqrt, 1, nullptr, &globalSize, nullptr, 0, nullptr, nullptr);
+    // Execute kernel with optimal work group size
+    // 256 threads per work group is optimal for most GPUs (good occupancy)
+    size_t globalSize = ((len + 255) / 256) * 256;  // Round up to multiple of 256
+    size_t localSize = 256;
+    clEnqueueNDRangeKernel(g_clQueue, g_kernelSqrt, 1, nullptr, &globalSize, &localSize, 0, nullptr, nullptr);
     clFinish(g_clQueue);
     
     // Read results
@@ -463,6 +520,158 @@ JNIEXPORT void JNICALL Java_fastmath_FastMath_gpuSqrtArray(JNIEnv *env, jclass c
     clReleaseMemObject(inBuffer);
     clReleaseMemObject(outBuffer);
     
+    env->ReleasePrimitiveArrayCritical(input, in, JNI_ABORT);
+    env->ReleasePrimitiveArrayCritical(output, out, 0);
+}
+
+// GPU-accelerated sin array
+JNIEXPORT void JNICALL Java_fastmath_FastMath_gpuSinArray(JNIEnv *env, jclass cls, jdoubleArray input, jdoubleArray output, jint len) {
+    if (!g_openclInitialized || !g_kernelSin) {
+        Java_fastmath_FastMath_nativeSinArray(env, cls, input, output, len);
+        return;
+    }
+    
+    jdouble* in = (jdouble*) env->GetPrimitiveArrayCritical(input, nullptr);
+    jdouble* out = (jdouble*) env->GetPrimitiveArrayCritical(output, nullptr);
+    
+    if (!in || !out) {
+        if (in) env->ReleasePrimitiveArrayCritical(input, in, JNI_ABORT);
+        if (out) env->ReleasePrimitiveArrayCritical(output, out, 0);
+        return;
+    }
+    
+    int err;
+    void* inBuffer = clCreateBuffer(g_clContext, CL_MEM_READ_ONLY, len * sizeof(double), nullptr, &err);
+    void* outBuffer = clCreateBuffer(g_clContext, CL_MEM_WRITE_ONLY, len * sizeof(double), nullptr, &err);
+    
+    clEnqueueWriteBuffer(g_clQueue, inBuffer, CL_TRUE, 0, len * sizeof(double), in, 0, nullptr, nullptr);
+    clSetKernelArg(g_kernelSin, 0, sizeof(void*), &inBuffer);
+    clSetKernelArg(g_kernelSin, 1, sizeof(void*), &outBuffer);
+    clSetKernelArg(g_kernelSin, 2, sizeof(int), &len);
+    
+    size_t globalSize = ((len + 255) / 256) * 256;
+    size_t localSize = 256;
+    clEnqueueNDRangeKernel(g_clQueue, g_kernelSin, 1, nullptr, &globalSize, &localSize, 0, nullptr, nullptr);
+    clFinish(g_clQueue);
+    
+    clEnqueueReadBuffer(g_clQueue, outBuffer, CL_TRUE, 0, len * sizeof(double), out, 0, nullptr, nullptr);
+    
+    clReleaseMemObject(inBuffer);
+    clReleaseMemObject(outBuffer);
+    env->ReleasePrimitiveArrayCritical(input, in, JNI_ABORT);
+    env->ReleasePrimitiveArrayCritical(output, out, 0);
+}
+
+// GPU-accelerated cos array
+JNIEXPORT void JNICALL Java_fastmath_FastMath_gpuCosArray(JNIEnv *env, jclass cls, jdoubleArray input, jdoubleArray output, jint len) {
+    if (!g_openclInitialized || !g_kernelCos) {
+        Java_fastmath_FastMath_nativeCosArray(env, cls, input, output, len);
+        return;
+    }
+    
+    jdouble* in = (jdouble*) env->GetPrimitiveArrayCritical(input, nullptr);
+    jdouble* out = (jdouble*) env->GetPrimitiveArrayCritical(output, nullptr);
+    
+    if (!in || !out) {
+        if (in) env->ReleasePrimitiveArrayCritical(input, in, JNI_ABORT);
+        if (out) env->ReleasePrimitiveArrayCritical(output, out, 0);
+        return;
+    }
+    
+    int err;
+    void* inBuffer = clCreateBuffer(g_clContext, CL_MEM_READ_ONLY, len * sizeof(double), nullptr, &err);
+    void* outBuffer = clCreateBuffer(g_clContext, CL_MEM_WRITE_ONLY, len * sizeof(double), nullptr, &err);
+    
+    clEnqueueWriteBuffer(g_clQueue, inBuffer, CL_TRUE, 0, len * sizeof(double), in, 0, nullptr, nullptr);
+    clSetKernelArg(g_kernelCos, 0, sizeof(void*), &inBuffer);
+    clSetKernelArg(g_kernelCos, 1, sizeof(void*), &outBuffer);
+    clSetKernelArg(g_kernelCos, 2, sizeof(int), &len);
+    
+    size_t globalSize = ((len + 255) / 256) * 256;
+    size_t localSize = 256;
+    clEnqueueNDRangeKernel(g_clQueue, g_kernelCos, 1, nullptr, &globalSize, &localSize, 0, nullptr, nullptr);
+    clFinish(g_clQueue);
+    
+    clEnqueueReadBuffer(g_clQueue, outBuffer, CL_TRUE, 0, len * sizeof(double), out, 0, nullptr, nullptr);
+    
+    clReleaseMemObject(inBuffer);
+    clReleaseMemObject(outBuffer);
+    env->ReleasePrimitiveArrayCritical(input, in, JNI_ABORT);
+    env->ReleasePrimitiveArrayCritical(output, out, 0);
+}
+
+// GPU-accelerated exp array
+JNIEXPORT void JNICALL Java_fastmath_FastMath_gpuExpArray(JNIEnv *env, jclass cls, jdoubleArray input, jdoubleArray output, jint len) {
+    if (!g_openclInitialized || !g_kernelExp) {
+        Java_fastmath_FastMath_nativeExpArray(env, cls, input, output, len);
+        return;
+    }
+    
+    jdouble* in = (jdouble*) env->GetPrimitiveArrayCritical(input, nullptr);
+    jdouble* out = (jdouble*) env->GetPrimitiveArrayCritical(output, nullptr);
+    
+    if (!in || !out) {
+        if (in) env->ReleasePrimitiveArrayCritical(input, in, JNI_ABORT);
+        if (out) env->ReleasePrimitiveArrayCritical(output, out, 0);
+        return;
+    }
+    
+    int err;
+    void* inBuffer = clCreateBuffer(g_clContext, CL_MEM_READ_ONLY, len * sizeof(double), nullptr, &err);
+    void* outBuffer = clCreateBuffer(g_clContext, CL_MEM_WRITE_ONLY, len * sizeof(double), nullptr, &err);
+    
+    clEnqueueWriteBuffer(g_clQueue, inBuffer, CL_TRUE, 0, len * sizeof(double), in, 0, nullptr, nullptr);
+    clSetKernelArg(g_kernelExp, 0, sizeof(void*), &inBuffer);
+    clSetKernelArg(g_kernelExp, 1, sizeof(void*), &outBuffer);
+    clSetKernelArg(g_kernelExp, 2, sizeof(int), &len);
+    
+    size_t globalSize = ((len + 255) / 256) * 256;
+    size_t localSize = 256;
+    clEnqueueNDRangeKernel(g_clQueue, g_kernelExp, 1, nullptr, &globalSize, &localSize, 0, nullptr, nullptr);
+    clFinish(g_clQueue);
+    
+    clEnqueueReadBuffer(g_clQueue, outBuffer, CL_TRUE, 0, len * sizeof(double), out, 0, nullptr, nullptr);
+    
+    clReleaseMemObject(inBuffer);
+    clReleaseMemObject(outBuffer);
+    env->ReleasePrimitiveArrayCritical(input, in, JNI_ABORT);
+    env->ReleasePrimitiveArrayCritical(output, out, 0);
+}
+
+// GPU-accelerated log array
+JNIEXPORT void JNICALL Java_fastmath_FastMath_gpuLogArray(JNIEnv *env, jclass cls, jdoubleArray input, jdoubleArray output, jint len) {
+    if (!g_openclInitialized || !g_kernelLog) {
+        Java_fastmath_FastMath_nativeLogArray(env, cls, input, output, len);
+        return;
+    }
+    
+    jdouble* in = (jdouble*) env->GetPrimitiveArrayCritical(input, nullptr);
+    jdouble* out = (jdouble*) env->GetPrimitiveArrayCritical(output, nullptr);
+    
+    if (!in || !out) {
+        if (in) env->ReleasePrimitiveArrayCritical(input, in, JNI_ABORT);
+        if (out) env->ReleasePrimitiveArrayCritical(output, out, 0);
+        return;
+    }
+    
+    int err;
+    void* inBuffer = clCreateBuffer(g_clContext, CL_MEM_READ_ONLY, len * sizeof(double), nullptr, &err);
+    void* outBuffer = clCreateBuffer(g_clContext, CL_MEM_WRITE_ONLY, len * sizeof(double), nullptr, &err);
+    
+    clEnqueueWriteBuffer(g_clQueue, inBuffer, CL_TRUE, 0, len * sizeof(double), in, 0, nullptr, nullptr);
+    clSetKernelArg(g_kernelLog, 0, sizeof(void*), &inBuffer);
+    clSetKernelArg(g_kernelLog, 1, sizeof(void*), &outBuffer);
+    clSetKernelArg(g_kernelLog, 2, sizeof(int), &len);
+    
+    size_t globalSize = ((len + 255) / 256) * 256;
+    size_t localSize = 256;
+    clEnqueueNDRangeKernel(g_clQueue, g_kernelLog, 1, nullptr, &globalSize, &localSize, 0, nullptr, nullptr);
+    clFinish(g_clQueue);
+    
+    clEnqueueReadBuffer(g_clQueue, outBuffer, CL_TRUE, 0, len * sizeof(double), out, 0, nullptr, nullptr);
+    
+    clReleaseMemObject(inBuffer);
+    clReleaseMemObject(outBuffer);
     env->ReleasePrimitiveArrayCritical(input, in, JNI_ABORT);
     env->ReleasePrimitiveArrayCritical(output, out, 0);
 }

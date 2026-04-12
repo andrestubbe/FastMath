@@ -87,6 +87,10 @@ public class FastMath {
     // OpenCL GPU
     private static native boolean initOpenCL();
     private static native void gpuSqrtArray(double[] input, double[] output, int len);
+    private static native void gpuSinArray(double[] input, double[] output, int len);
+    private static native void gpuCosArray(double[] input, double[] output, int len);
+    private static native void gpuExpArray(double[] input, double[] output, int len);
+    private static native void gpuLogArray(double[] input, double[] output, int len);
     
     // Trigonometric
     private static native double nativeSin(double x);
@@ -122,6 +126,7 @@ public class FastMath {
     // Array operations
     private static native void nativeSqrtArray(double[] input, double[] output, int len);
     private static native void nativeSinArray(double[] input, double[] output, int len);
+    private static native void nativeCosArray(double[] input, double[] output, int len);
     private static native void nativeExpArray(double[] input, double[] output, int len);
     private static native void nativeLogArray(double[] input, double[] output, int len);
     
@@ -346,7 +351,9 @@ public class FastMath {
     }
     
     public static void sin(double[] input, double[] output) {
-        if (NATIVE_AVAILABLE) {
+        if (GPU_AVAILABLE && input.length >= GPU_THRESHOLD) {
+            gpuSinArray(input, output, input.length);
+        } else if (NATIVE_AVAILABLE) {
             nativeSinArray(input, output, input.length);
         } else {
             for (int i = 0; i < input.length; i++) {
@@ -355,8 +362,22 @@ public class FastMath {
         }
     }
     
+    public static void cos(double[] input, double[] output) {
+        if (GPU_AVAILABLE && input.length >= GPU_THRESHOLD) {
+            gpuCosArray(input, output, input.length);
+        } else if (NATIVE_AVAILABLE) {
+            nativeCosArray(input, output, input.length);
+        } else {
+            for (int i = 0; i < input.length; i++) {
+                output[i] = Math.cos(input[i]);
+            }
+        }
+    }
+    
     public static void exp(double[] input, double[] output) {
-        if (NATIVE_AVAILABLE) {
+        if (GPU_AVAILABLE && input.length >= GPU_THRESHOLD) {
+            gpuExpArray(input, output, input.length);
+        } else if (NATIVE_AVAILABLE) {
             nativeExpArray(input, output, input.length);
         } else {
             for (int i = 0; i < input.length; i++) {
@@ -366,7 +387,9 @@ public class FastMath {
     }
     
     public static void log(double[] input, double[] output) {
-        if (NATIVE_AVAILABLE) {
+        if (GPU_AVAILABLE && input.length >= GPU_THRESHOLD) {
+            gpuLogArray(input, output, input.length);
+        } else if (NATIVE_AVAILABLE) {
             nativeLogArray(input, output, input.length);
         } else {
             for (int i = 0; i < input.length; i++) {
