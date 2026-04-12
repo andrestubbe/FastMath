@@ -46,6 +46,16 @@
 - [ ] Rounding functions (may skip - already fast in Java)
 - [ ] Min/max/abs (may skip - already fast in Java)
 
+#### Phase 5: Vector & Matrix Math 💡 IDEA
+- [ ] `Vector2D`, `Vector3D`, `Vector4D` classes
+- [ ] `Matrix3x3`, `Matrix4x4` for graphics/physics
+- [ ] Use `fastInvSqrt()` for lightning-fast normalization
+- [ ] Dot product, cross product, distance, lerp
+- [ ] Transform, rotate, scale operations
+- [ ] SIMD batch: `Vector3D.normalize(arrayOfVectors)`
+
+*Perfect for game engines, physics simulations, 3D graphics*
+
 #### Phase 4: Testing & Optimization
 - [ ] Unit tests for correctness (JNI vs Java Math)
 - [ ] Performance regression tests
