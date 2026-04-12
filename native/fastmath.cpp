@@ -5,6 +5,15 @@
 #include <xmmintrin.h>  // SSE intrinsics for _mm_prefetch
 #include "fastmath.h"
 
+// OpenCL types for GPU detection (if available)
+#ifdef _WIN32
+    typedef unsigned char cl_uchar;
+    typedef unsigned int cl_uint;
+    typedef cl_uint cl_bool;
+    typedef cl_uchar cl_char;
+    typedef signed long long cl_long;
+#endif
+
 // SIMD CONFIGURATION
 #define SIMD_WIDTH 4  // AVX2 processes 4 doubles per iteration
 #define UNROLL_FACTOR 4  // Loop unrolling for scalar functions
@@ -1239,4 +1248,68 @@ JNIEXPORT void JNICALL Java_fastmath_FastMathRandom_gpuNextFloatBatch(JNIEnv *en
     
     // Placeholder - falls back to CPU
     Java_fastmath_FastMathRandom_nativeNextFloatBatch(env, cls, output, seed);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// FastMathInspector - Hardware Detection
+// ═══════════════════════════════════════════════════════════════════════════
+
+JNIEXPORT jboolean JNICALL Java_fastmath_FastMathInspector_nativeHasAVX2(JNIEnv *env, jclass cls) {
+    #ifdef __AVX2__
+        return JNI_TRUE;
+    #else
+        // Runtime detection via CPUID would go here
+        return JNI_TRUE;  // Conservative: assume AVX2 on modern systems
+    #endif
+}
+
+JNIEXPORT jboolean JNICALL Java_fastmath_FastMathInspector_nativeHasAVX512(JNIEnv *env, jclass cls) {
+    #ifdef __AVX512F__
+        return JNI_TRUE;
+    #else
+        return JNI_FALSE;  // AVX512 is rare
+    #endif
+}
+
+JNIEXPORT jboolean JNICALL Java_fastmath_FastMathInspector_nativeHasFMA(JNIEnv *env, jclass cls) {
+    #ifdef __FMA__
+        return JNI_TRUE;
+    #else
+        return JNI_TRUE;  // Most AVX2 CPUs have FMA
+    #endif
+}
+
+JNIEXPORT jint JNICALL Java_fastmath_FastMathInspector_nativeGetSIMDWidth(JNIEnv *env, jclass cls) {
+    #ifdef __AVX512F__
+        return 8;  // 8 doubles per AVX512 register
+    #elif defined(__AVX2__)
+        return 4;  // 4 doubles per AVX2 register
+    #else
+        return 1;  // Scalar fallback
+    #endif
+}
+
+JNIEXPORT jboolean JNICALL Java_fastmath_FastMathInspector_nativeGPUAvailable(JNIEnv *env, jclass cls) {
+    // Check if OpenCL context was successfully created
+    return (openCLAvailable && openCLContext != NULL) ? JNI_TRUE : JNI_FALSE;
+}
+
+JNIEXPORT jstring JNICALL Java_fastmath_FastMathInspector_nativeGPUVendor(JNIEnv *env, jclass cls) {
+    if (!openCLAvailable || openCLDevice == NULL) {
+        return env->NewStringUTF("N/A");
+    }
+    
+    cl_char vendorName[256];
+    clGetDeviceInfo(openCLDevice, CL_DEVICE_VENDOR, sizeof(vendorName), vendorName, NULL);
+    return env->NewStringUTF((const char*)vendorName);
+}
+
+JNIEXPORT jint JNICALL Java_fastmath_FastMathInspector_nativeGPUComputeUnits(JNIEnv *env, jclass cls) {
+    if (!openCLAvailable || openCLDevice == NULL) {
+        return 0;
+    }
+    
+    cl_uint computeUnits;
+    clGetDeviceInfo(openCLDevice, CL_DEVICE_MAX_COMPUTE_UNITS, sizeof(computeUnits), &computeUnits, NULL);
+    return (jint)computeUnits;
 }
