@@ -78,6 +78,22 @@ JNIEXPORT void JNICALL Java_fastmath_FastMathVectors_nativeDot3Batch(JNIEnv *env
 JNIEXPORT void JNICALL Java_fastmath_FastMathVectors_nativeLength3Batch(JNIEnv *env, jclass cls,
     jdoubleArray vectors, jdoubleArray out, jint count);
 
+// FastMathNoise - Procedural noise generation
+JNIEXPORT void JNICALL Java_fastmath_FastMathNoise_nativePerlinGrid(JNIEnv *env, jclass cls,
+    jdoubleArray output, jint width, jint height, jdouble scale, jdouble offsetX, jdouble offsetY);
+
+// FastMathRandom - High-performance RNG
+JNIEXPORT void JNICALL Java_fastmath_FastMathRandom_nativeNextDoubleBatch(JNIEnv *env, jclass cls,
+    jdoubleArray output, jlong seed);
+JNIEXPORT void JNICALL Java_fastmath_FastMathRandom_nativeNextFloatBatch(JNIEnv *env, jclass cls,
+    jfloatArray output, jlong seed);
+JNIEXPORT void JNICALL Java_fastmath_FastMathRandom_nativeNextLongBatch(JNIEnv *env, jclass cls,
+    jlongArray output, jlong seed);
+JNIEXPORT void JNICALL Java_fastmath_FastMathRandom_gpuNextDoubleBatch(JNIEnv *env, jclass cls,
+    jdoubleArray output, jlong seed, jint len);
+JNIEXPORT void JNICALL Java_fastmath_FastMathRandom_gpuNextFloatBatch(JNIEnv *env, jclass cls,
+    jfloatArray output, jlong seed, jint len);
+
 #ifdef __cplusplus
 }
 #endif
