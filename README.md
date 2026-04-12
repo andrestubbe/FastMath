@@ -96,16 +96,20 @@ x *= invLen; y *= invLen; z *= invLen;  // Normalized!
 - Complex math functions (pow, atan2, sinh)
 - Games: Vector normalization, distance checks, physics
 
-### Alternatives
+### Inspiration & Prior Art
 
-| Library | Approach | Best For |
-|---------|----------|----------|
-| **[Jafama](https://github.com/jeffhain/jafama)** | Pure Java approximations | Scalar ops (no JNI overhead) |
-| **Apache Commons Math** | Polynomial approximations | General math, strict accuracy |
-| **FastMath (this)** | JNI + AVX2 SIMD + GPU | **Batch arrays, games, GPU offload** |
+FastMath stands on the shoulders of giants:
 
-**Choose Jafama** for scalar-heavy code where JNI call overhead matters.  
-**Choose FastMath** for batch array processing where SIMD and GPU can shine.
+| Library | Innovation | Approach |
+|---------|------------|----------|
+| **[Jafama](https://github.com/jeffhain/jafama)** | Proved Java math can be 2-4x faster via polynomial approximations | Pure Java |
+| **Apache Commons Math** | Established fast math library patterns for the JVM | Pure Java |
+| **Quake III Arena** | Legendary `0x5f3759df` bit-hack for `1/sqrt(x)` | C/assembler |
+| **FastMath (this)** | Brings **hardware SIMD + GPU acceleration** to Java math | JNI + OpenCL |
+
+**Our Contribution:** While Jafama proved pure Java approximations work for scalars, we focus on **batch array operations** where JNI overhead amortizes and hardware acceleration (AVX2, GPU) dominates. The Quake algorithm is the cherry on top for game developers.
+
+*Thanks to Jeff Hain (Jafama), Apache Commons team, and John Carmack (id Software) for blazing the trail.*
 
 ---
 
