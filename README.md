@@ -60,15 +60,17 @@ mvn test-compile exec:java -Dexec.mainClass="fastmath.ComparisonBenchmark" -Dexe
 | `fastInvSqrt(x)` | 25+ ns | **2-3 ns** | **~10x** | Games, vectors |
 | `sin(array)` | 10.94 ns/elem | **6.78 ns/elem** | **1.61x** | Audio/graphics |
 
-**🎮 Fast Inverse Sqrt (Quake Algorithm):**
+**🎮 Fast Inverse Sqrt (Quake III Arena Algorithm):**
 ```java
 // 10x faster than 1.0f/Math.sqrt(x) - perfect for vector normalization
 float invLen = FastMath.fastInvSqrt(x*x + y*y + z*z);  // ~2-3ns
 x *= invLen; y *= invLen; z *= invLen;  // Normalized!
 ```
 - **Speed:** ~10x faster (2-3ns vs 25ns)
-- **Accuracy:** 0.0004% error (barely measurable)
+- **Accuracy:** 0.0004% error — *"what the fuck?"* — John Carmack (creator of Quake)
 - **Use:** Games, physics, graphics where speed > perfection
+
+*The legendary bit-hack that powered Quake's 3D graphics in 1999, now in your Java code.*
 
 **The Rule:**
 - ❌ **Scalar single ops**: Java wins (~10ns JNI call overhead)
