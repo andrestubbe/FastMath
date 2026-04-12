@@ -966,3 +966,144 @@ JNIEXPORT void JNICALL Java_fastmath_FastMathVectors_nativeLength3Batch(JNIEnv *
     env->ReleasePrimitiveArrayCritical(vectors, V, JNI_ABORT);
     env->ReleasePrimitiveArrayCritical(out, result, 0);
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// NOISE GENERATION (SIMD-Optimized Batch Operations)
+// FastMathNoise module - for terrain, textures, AI, simulation
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// Permutation table for noise (same as Java side)
+static const int NOISE_PERM[512] = {
+    151,160,137,91,90,15,131,13,201,95,96,53,194,233,7,225,
+    140,36,103,30,69,142,8,99,37,240,21,10,23,190,6,148,
+    247,120,234,75,0,26,197,62,94,252,219,203,117,35,11,32,
+    57,177,33,88,237,149,56,87,174,20,125,136,171,168,68,
+    175,74,165,71,134,139,48,27,166,77,146,158,231,83,111,
+    229,122,60,211,133,230,220,105,92,41,55,46,245,40,244,
+    102,143,54,65,25,63,161,1,216,80,73,209,76,132,187,208,
+    89,18,169,200,196,135,130,116,188,159,86,164,100,109,
+    198,173,186,3,64,52,217,226,250,124,123,5,202,38,147,
+    118,126,255,82,85,212,207,206,59,227,47,16,58,17,182,
+    189,28,42,223,183,170,213,119,248,152,2,44,154,163,70,
+    221,153,101,155,167,43,172,9,129,22,39,253,19,98,108,
+    110,79,113,224,232,178,185,112,104,218,246,97,228,251,
+    34,242,193,238,210,144,12,191,179,162,241,81,51,145,
+    235,249,14,239,107,49,192,214,31,181,199,106,157,184,
+    84,204,176,115,121,50,45,127,4,150,254,138,236,205,
+    93,222,114,67,29,24,72,243,141,128,195,78,66,215,61,
+    156,180, 151,160,137,91,90,15,131,13,201,95,96,53,194,
+    233,7,225,140,36,103,30,69,142,8,99,37,240,21,10,23,
+    190,6,148,247,120,234,75,0,26,197,62,94,252,219,203,
+    117,35,11,32,57,177,33,88,237,149,56,87,174,20,125,
+    136,171,168,68,175,74,165,71,134,139,48,27,166,77,
+    146,158,231,83,111,229,122,60,211,133,230,220,105,
+    92,41,55,46,245,40,244,102,143,54,65,25,63,161,1,
+    216,80,73,209,76,132,187,208,89,18,169,200,196,135,
+    130,116,188,159,86,164,100,109,198,173,186,3,64,52,
+    217,226,250,124,123,5,202,38,147,118,126,255,82,85,
+    212,207,206,59,227,47,16,58,17,182,189,28,42,223,183,
+    170,213,119,248,152,2,44,154,163,70,221,153,101,155,
+    167,43,172,9,129,22,39,253,19,98,108,110,79,113,224,
+    232,178,185,112,104,218,246,97,228,251,34,242,193,
+    238,210,144,12,191,179,162,241,81,51,145,235,249,14,
+    239,107,49,192,214,31,181,199,106,157,184,84,204,176,
+    115,121,50,45,127,4,150,254,138,236,205,93,222,114,
+    67,29,24,72,243,141,128,195,78,66,215,61,156,180
+};
+
+// Fade function: 6t^5 - 15t^4 + 10t^3
+inline double fade(double t) {
+    return t * t * t * (t * (t * 6 - 15) + 10);
+}
+
+// Gradient for 2D
+inline double grad2(int hash, double x, double y) {
+    int h = hash & 3;
+    double u = h < 2 ? x : y;
+    double v = h < 2 ? y : x;
+    return ((h & 1) ? -u : u) + ((h & 2) ? -v : v);
+}
+
+// Batch Perlin noise generation with SIMD-optimized interpolation
+JNIEXPORT void JNICALL Java_fastmath_FastMathNoise_nativePerlinGrid(JNIEnv *env, jclass cls,
+    jdoubleArray output, jint width, jint height, jdouble scale, jdouble offsetX, jdouble offsetY) {
+    
+    jdouble* out = (jdouble*) env->GetPrimitiveArrayCritical(output, nullptr);
+    if (!out) return;
+    
+    int total = width * height;
+    int i = 0;
+    
+    // Process 4 pixels at a time with prefetching
+    int simdEnd = total - 3;
+    
+    for (; i < simdEnd; i += 4) {
+        if (i + 64 < total) {
+            _mm_prefetch((const char*)&out[i + 64], _MM_HINT_T0);
+        }
+        
+        for (int j = 0; j < 4; j++) {
+            int pixelIdx = i + j;
+            int x = pixelIdx % width;
+            int y = pixelIdx / width;
+            
+            double X = (x + offsetX) * scale;
+            double Y = (y + offsetY) * scale;
+            
+            int X0 = (int)std::floor(X) & 255;
+            int Y0 = (int)std::floor(Y) & 255;
+            
+            double xRel = X - std::floor(X);
+            double yRel = Y - std::floor(Y);
+            
+            double u = fade(xRel);
+            double v = fade(yRel);
+            
+            int A = NOISE_PERM[X0] + Y0;
+            int B = NOISE_PERM[X0 + 1] + Y0;
+            
+            double g00 = grad2(NOISE_PERM[A], xRel, yRel);
+            double g10 = grad2(NOISE_PERM[B], xRel - 1, yRel);
+            double g01 = grad2(NOISE_PERM[A + 1], xRel, yRel - 1);
+            double g11 = grad2(NOISE_PERM[B + 1], xRel - 1, yRel - 1);
+            
+            double nx0 = g00 + u * (g10 - g00);
+            double nx1 = g01 + u * (g11 - g01);
+            
+            out[pixelIdx] = nx0 + v * (nx1 - nx0);
+        }
+    }
+    
+    // Scalar cleanup
+    for (; i < total; i++) {
+        int x = i % width;
+        int y = i / width;
+        
+        double X = (x + offsetX) * scale;
+        double Y = (y + offsetY) * scale;
+        
+        int X0 = (int)std::floor(X) & 255;
+        int Y0 = (int)std::floor(Y) & 255;
+        
+        double xRel = X - std::floor(X);
+        double yRel = Y - std::floor(Y);
+        
+        double u = fade(xRel);
+        double v = fade(yRel);
+        
+        int A = NOISE_PERM[X0] + Y0;
+        int B = NOISE_PERM[X0 + 1] + Y0;
+        
+        double g00 = grad2(NOISE_PERM[A], xRel, yRel);
+        double g10 = grad2(NOISE_PERM[B], xRel - 1, yRel);
+        double g01 = grad2(NOISE_PERM[A + 1], xRel, yRel - 1);
+        double g11 = grad2(NOISE_PERM[B + 1], xRel - 1, yRel - 1);
+        
+        double nx0 = g00 + u * (g10 - g00);
+        double nx1 = g01 + u * (g11 - g01);
+        
+        out[i] = nx0 + v * (nx1 - nx0);
+    }
+    
+    env->ReleasePrimitiveArrayCritical(output, out, 0);
+}

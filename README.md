@@ -132,6 +132,41 @@ FastMathVectors.mul4x4VectorBatch(matrix, vertices, transformed, 1000);  // SIMD
 - ✅ `normalize3Fast` — Quake fast normalization for games
 - ✅ AVX2 SIMD acceleration via JNI
 
+### FastMathNoise — Procedural Noise Generation
+
+For terrain, textures, AI, and simulation:
+
+```java
+import fastmath.FastMathNoise;
+
+// Perlin noise - classic gradient noise
+double n = FastMathNoise.perlin2D(x * 0.1, y * 0.1);
+
+// Simplex noise - faster, less directional artifacts
+double s = FastMathNoise.simplex2D(x * 0.05, y * 0.05);
+
+// Worley noise - cellular/Voronoi patterns
+double w = FastMathNoise.worley2D(x, y);
+
+// Fractal Brownian Motion - multi-octave detail
+double fbm = FastMathNoise.fBm2D(x, y, 4, 2.0, 0.5);
+
+// Ridged multifractal - terrain/mountains
+double ridged = FastMathNoise.ridgedMF2D(x, y, 6, 2.0, 0.5);
+
+// Batch generate noise texture (SIMD accelerated)
+double[] noiseMap = new double[1024 * 1024];
+FastMathNoise.perlinGrid(noiseMap, 1024, 1024, 0.01, 0, 0);
+```
+
+**Features:**
+- ✅ `perlin2D`, `perlin3D` — Classic gradient noise
+- ✅ `simplex2D` — Faster alternative to Perlin
+- ✅ `worley2D` — Cellular/Voronoi patterns
+- ✅ `fBm2D` — Multi-octave fractal noise
+- ✅ `ridgedMF2D` — Terrain generation
+- ✅ `perlinGrid` — Batch generation with JNI SIMD
+
 ### When to Use FastMath
 
 **✅ Best For:**
