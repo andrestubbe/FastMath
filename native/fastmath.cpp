@@ -1,6 +1,11 @@
 #include <cmath>
 #include <jni.h>
+#include <immintrin.h>  // AVX2 intrinsics
 #include "fastmath.h"
+
+// SIMD CONFIGURATION
+#define SIMD_WIDTH 4  // AVX2 processes 4 doubles per iteration
+#define UNROLL_FACTOR 4  // Loop unrolling for scalar functions
 
 // Trigonometric functions
 JNIEXPORT jdouble JNICALL Java_fastmath_FastMath_nativeSin(JNIEnv *env, jclass cls, jdouble x) {
@@ -91,51 +96,123 @@ JNIEXPORT jdouble JNICALL Java_fastmath_FastMath_nativeRint(JNIEnv *env, jclass 
     return std::rint(x);
 }
 
-// Array operations (batch processing with SIMD-friendly loops)
+// Array operations with AVX2 SIMD vectorization
+// Uses GetPrimitiveArrayCritical to avoid array copy overhead
 JNIEXPORT void JNICALL Java_fastmath_FastMath_nativeSqrtArray(JNIEnv *env, jclass cls, jdoubleArray input, jdoubleArray output, jint len) {
-    jdouble* in = env->GetDoubleArrayElements(input, nullptr);
-    jdouble* out = env->GetDoubleArrayElements(output, nullptr);
+    // Critical section: direct pointer access, no array copy, GC disabled
+    jdouble* in = (jdouble*) env->GetPrimitiveArrayCritical(input, nullptr);
+    jdouble* out = (jdouble*) env->GetPrimitiveArrayCritical(output, nullptr);
     
-    for (int i = 0; i < len; i++) {
+    if (in == nullptr || out == nullptr) {
+        // Fallback if critical section failed
+        if (in) env->ReleasePrimitiveArrayCritical(input, in, JNI_ABORT);
+        if (out) env->ReleasePrimitiveArrayCritical(output, out, 0);
+        return;
+    }
+    
+    int i = 0;
+    int simdEnd = len - (SIMD_WIDTH - 1);
+    
+    // AVX2 vectorized path: 4x throughput
+    for (; i < simdEnd; i += SIMD_WIDTH) {
+        __m256d vec = _mm256_loadu_pd(&in[i]);      // Load 4 doubles
+        __m256d result = _mm256_sqrt_pd(vec);       // 4 sqrt operations in 1 instruction
+        _mm256_storeu_pd(&out[i], result);          // Store 4 results
+    }
+    
+    // Scalar cleanup for remaining 0-3 elements
+    for (; i < len; i++) {
         out[i] = std::sqrt(in[i]);
     }
     
-    env->ReleaseDoubleArrayElements(input, in, JNI_ABORT);
-    env->ReleaseDoubleArrayElements(output, out, 0);
+    // Release critical sections (0 = copy back and release)
+    env->ReleasePrimitiveArrayCritical(input, in, JNI_ABORT);
+    env->ReleasePrimitiveArrayCritical(output, out, 0);
 }
 
+// sin() with 4x unrolled loop using critical sections
 JNIEXPORT void JNICALL Java_fastmath_FastMath_nativeSinArray(JNIEnv *env, jclass cls, jdoubleArray input, jdoubleArray output, jint len) {
-    jdouble* in = env->GetDoubleArrayElements(input, nullptr);
-    jdouble* out = env->GetDoubleArrayElements(output, nullptr);
+    jdouble* in = (jdouble*) env->GetPrimitiveArrayCritical(input, nullptr);
+    jdouble* out = (jdouble*) env->GetPrimitiveArrayCritical(output, nullptr);
     
-    for (int i = 0; i < len; i++) {
+    if (in == nullptr || out == nullptr) {
+        if (in) env->ReleasePrimitiveArrayCritical(input, in, JNI_ABORT);
+        if (out) env->ReleasePrimitiveArrayCritical(output, out, 0);
+        return;
+    }
+    
+    int i = 0;
+    int unrollEnd = len - (UNROLL_FACTOR - 1);
+    
+    for (; i < unrollEnd; i += UNROLL_FACTOR) {
+        out[i] = std::sin(in[i]);
+        out[i+1] = std::sin(in[i+1]);
+        out[i+2] = std::sin(in[i+2]);
+        out[i+3] = std::sin(in[i+3]);
+    }
+    
+    for (; i < len; i++) {
         out[i] = std::sin(in[i]);
     }
     
-    env->ReleaseDoubleArrayElements(input, in, JNI_ABORT);
-    env->ReleaseDoubleArrayElements(output, out, 0);
+    env->ReleasePrimitiveArrayCritical(input, in, JNI_ABORT);
+    env->ReleasePrimitiveArrayCritical(output, out, 0);
 }
 
+// exp() with 4x loop unrolling using critical sections
 JNIEXPORT void JNICALL Java_fastmath_FastMath_nativeExpArray(JNIEnv *env, jclass cls, jdoubleArray input, jdoubleArray output, jint len) {
-    jdouble* in = env->GetDoubleArrayElements(input, nullptr);
-    jdouble* out = env->GetDoubleArrayElements(output, nullptr);
+    jdouble* in = (jdouble*) env->GetPrimitiveArrayCritical(input, nullptr);
+    jdouble* out = (jdouble*) env->GetPrimitiveArrayCritical(output, nullptr);
     
-    for (int i = 0; i < len; i++) {
+    if (in == nullptr || out == nullptr) {
+        if (in) env->ReleasePrimitiveArrayCritical(input, in, JNI_ABORT);
+        if (out) env->ReleasePrimitiveArrayCritical(output, out, 0);
+        return;
+    }
+    
+    int i = 0;
+    int unrollEnd = len - (UNROLL_FACTOR - 1);
+    
+    for (; i < unrollEnd; i += UNROLL_FACTOR) {
+        out[i] = std::exp(in[i]);
+        out[i+1] = std::exp(in[i+1]);
+        out[i+2] = std::exp(in[i+2]);
+        out[i+3] = std::exp(in[i+3]);
+    }
+    
+    for (; i < len; i++) {
         out[i] = std::exp(in[i]);
     }
     
-    env->ReleaseDoubleArrayElements(input, in, JNI_ABORT);
-    env->ReleaseDoubleArrayElements(output, out, 0);
+    env->ReleasePrimitiveArrayCritical(input, in, JNI_ABORT);
+    env->ReleasePrimitiveArrayCritical(output, out, 0);
 }
 
+// log() with 4x loop unrolling using critical sections
 JNIEXPORT void JNICALL Java_fastmath_FastMath_nativeLogArray(JNIEnv *env, jclass cls, jdoubleArray input, jdoubleArray output, jint len) {
-    jdouble* in = env->GetDoubleArrayElements(input, nullptr);
-    jdouble* out = env->GetDoubleArrayElements(output, nullptr);
+    jdouble* in = (jdouble*) env->GetPrimitiveArrayCritical(input, nullptr);
+    jdouble* out = (jdouble*) env->GetPrimitiveArrayCritical(output, nullptr);
     
-    for (int i = 0; i < len; i++) {
+    if (in == nullptr || out == nullptr) {
+        if (in) env->ReleasePrimitiveArrayCritical(input, in, JNI_ABORT);
+        if (out) env->ReleasePrimitiveArrayCritical(output, out, 0);
+        return;
+    }
+    
+    int i = 0;
+    int unrollEnd = len - (UNROLL_FACTOR - 1);
+    
+    for (; i < unrollEnd; i += UNROLL_FACTOR) {
+        out[i] = std::log(in[i]);
+        out[i+1] = std::log(in[i+1]);
+        out[i+2] = std::log(in[i+2]);
+        out[i+3] = std::log(in[i+3]);
+    }
+    
+    for (; i < len; i++) {
         out[i] = std::log(in[i]);
     }
     
-    env->ReleaseDoubleArrayElements(input, in, JNI_ABORT);
-    env->ReleaseDoubleArrayElements(output, out, 0);
+    env->ReleasePrimitiveArrayCritical(input, in, JNI_ABORT);
+    env->ReleasePrimitiveArrayCritical(output, out, 0);
 }
