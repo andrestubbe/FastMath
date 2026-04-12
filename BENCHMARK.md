@@ -1,83 +1,94 @@
 # FastMath Performance Benchmarks
 
-**System:** AMD Ryzen 9 5900X + NVIDIA RTX 3080  
-**Java:** OpenJDK 17  
-**Date:** 2026-04-12
+**System:** AMD Ryzen 9 5900X  
+**Java:** OpenJDK 25.0.1  
+**Date:** 2026-04-12  
+**Benchmark:** `AllModulesBenchmark.java`
 
 ## 🚀 Key Results
 
 | Metric | Value |
 |--------|-------|
-| **Maximum Speedup** | **42.3x** (GPU OpenCL) |
-| **Average SIMD Speedup** | **2.8x** (AVX2) |
-| **Fast Inverse Sqrt** | **~10x** (Quake algorithm) |
-| **Matrix Batch** | **3.2x** (JNI SIMD) |
-| **Noise Generation** | **1.8x** (SIMD batch) |
+| **Maximum Speedup** | **25.8x** (Random Xoshiro256**) |
+| **Best SIMD Speedup** | **19.6x** (dot3Batch) |
+| **Matrix Batch** | **5.0x** (mul4x4VectorBatch) |
+| **Array Batch** | **2.0-3.1x** (JNI SIMD) |
+| **Neural Init** | **<1ms** (10K Xavier weights) |
 
-## 📊 Scalar Operations
+## 📊 Scalar Operations (JNI Overhead vs Java)
 
-| Operation | Java Math | FastMath | Speedup |
-|-----------|-----------|----------|---------|
-| sin | 18.5 ns | 17.8 ns | 1.04x |
-| cos | 18.2 ns | 17.9 ns | 1.02x |
-| exp | 22.1 ns | 21.5 ns | 1.03x |
-| log | 19.8 ns | 19.2 ns | 1.03x |
-| sqrt | 8.5 ns | 8.1 ns | 1.05x |
-| atan2 | 35.2 ns | 34.1 ns | 1.03x |
-| pow | 45.6 ns | 44.2 ns | 1.03x |
-| **fastInvSqrt** | **25.3 ns** | **2.4 ns** | **~10x** |
+⚠️ **Important:** Scalar operations have JNI call overhead. Use **batch operations** for speed!
 
-## 📈 Array Operations (Batch Processing)
+| Operation | Java Math | FastMath | Speedup | Note |
+|-----------|-----------|----------|---------|------|
+| sqrt | 0.39 ns | 8.74 ns | 0.04x | JNI overhead |
+| sin | 11.26 ns | 20.50 ns | 0.55x | JNI overhead |
+| cos | 14.29 ns | 22.78 ns | 0.63x | JNI overhead |
+| exp | 13.00 ns | 17.49 ns | 0.74x | JNI overhead |
+| log | 10.25 ns | 20.50 ns | 0.50x | JNI overhead |
+| atan2 | 22.93 ns | 44.52 ns | 0.52x | JNI overhead |
+| fastInvSqrt | 4.33 ns | 21.30 ns | 0.20x | JNI overhead |
+
+**✅ Recommendation:** Use arrays/batch ops, not scalar JNI calls!
+
+## 📈 Array Operations (Batch Processing) - REAL DATA
 
 | Size | Array | Java Math | FastMath | Speedup | Backend |
 |------|-------|-----------|----------|---------|---------|
-| 100 | sqrt | 0.05 ms | 0.02 ms | 2.5x | SIMD |
-| 1,000 | sqrt | 0.52 ms | 0.18 ms | 2.9x | SIMD |
-| 10,000 | sqrt | 4.8 ms | 1.7 ms | 2.8x | SIMD |
-| 100,000 | sqrt | 48.2 ms | 18.5 ms | 2.6x | SIMD |
-| 1,000,000 | sqrt | 485.0 ms | **11.5 ms** | **42.2x** | **GPU** |
-| 100,000 | sin | 109.5 ms | 68.3 ms | 1.6x | SIMD |
-| 1,000,000 | sin | 1,098.0 ms | **26.4 ms** | **41.6x** | **GPU** |
-| 100,000 | exp | 112.3 ms | 72.1 ms | 1.6x | SIMD |
-| 1,000,000 | exp | 1,124.0 ms | **27.8 ms** | **40.4x** | **GPU** |
+| 1,000 | sqrt | 0.07 ms | 0.04 ms | **2.00x** | JNI SIMD |
+| 10,000 | sqrt | 0.39 ms | 0.21 ms | **1.88x** | JNI SIMD |
 
-## 🎯 Vector & Matrix Operations
+## 🎯 Vector & Matrix Operations - REAL DATA
 
-| Operation | Java/Math | FastMath | Speedup | Backend |
-|-----------|-----------|----------|---------|---------|
-| dot3Batch(10K) | 0.35 ms | 0.12 ms | 2.9x | SIMD |
-| mul4x4Batch(10K) | 1.85 ms | 0.58 ms | 3.2x | SIMD |
-| mul4x4(100K ops) | 12.5 ms | 4.1 ms | 3.0x | SIMD |
-| normalize3Fast(1M) | 45.2 ms | 4.8 ms | 9.4x | Quake |
+| Operation | Java/Math | FastMath | Speedup | Implementation |
+|-----------|-----------|----------|---------|----------------|
+| dot3Batch(5,000) | 0.21 ms | 0.01 ms | **19.60x** 🚀 | AVX2 SIMD |
+| mul4x4Batch(10,000) | 0.30 ms | 0.06 ms | **5.05x** | AVX2 SIMD |
+| cross3(100K) | 0.63 ms | 9.83 ms | 0.06x | JNI overhead |
+| mul4x4(50K) | 3.21 ms | 7.38 ms | 0.44x | JNI overhead |
 
-## 🌊 Noise Generation
+**✅ Pattern:** Batch operations win (5-20x), individual calls lose (JNI overhead).
+
+## 🌊 Noise Generation - REAL DATA
 
 | Operation | Time | Speedup | Notes |
 |-----------|------|---------|-------|
-| perlinGrid(1M) - Java | 245.0 ms | - | Scalar loops |
-| perlinGrid(1M) - JNI | **138.0 ms** | **1.8x** | SIMD batch |
-| simplex2D(1M) | 198.0 ms | - | Pure Java |
-| fBm2D 8-octaves | 1.6 ms | - | Multi-octave |
+| perlin2D(10K calls) | 0.40 ms | - | Single calls |
+| perlinGrid(262K) | 4.46 ms / 7.17 ms | 0.62x | JNI SIMD vs Java loop |
+| simplex2D(10K calls) | 0.57 ms | - | Pure Java |
+| fBm2D(2.5K, 4-octave) | 0.65 ms | - | Multi-octave |
 
-## 🎮 Game Development Highlights
+## � FastMathRandom - REAL DATA
 
-### Fast Inverse Square Root (Quake III Algorithm)
+| Generator | java.util | FastMath | Speedup | Implementation |
+|-----------|-----------|----------|---------|----------------|
+| nextDouble(1M) | 31.37 ms | 1.22 ms | **25.75x** 🚀 | Xoshiro256** |
+| batch(100K) | 2.69 ms | 0.86 ms | **3.13x** | JNI SIMD |
+| PCG32(1M) | - | 1.24 ms | - | Pure Java |
+| xavierInit(10K) | - | 0.24 ms | - | NN weights |
+
+## � Key Insights
+
+### 1. Scalar vs Batch: The JNI Lesson
 ```
-Java:    1/Math.sqrt(x)  = 25.3 ns
-FastMath: fastInvSqrt(x) =  2.4 ns  ← ~10x faster!
+❌ Scalar JNI (slow due to call overhead):
+  sqrt(x): Java 0.39ns vs FastMath 8.74ns (22x SLOWER)
+
+✅ Batch JNI (fast due to amortized overhead):
+  sqrt(1K array): Java 0.07ms vs FastMath 0.04ms (2x FASTER)
+  dot3Batch(5K): Java 0.21ms vs FastMath 0.01ms (20x FASTER)
 ```
 
-Perfect for:
-- Vector normalization
-- Distance calculations
-- Physics engines
-- Graphics shaders
-
-### Batch Vertex Transforms
+### 2. FastMathRandom: Massive Win
 ```
-10,000 vertices × 4x4 matrix:
-Java:    1.85 ms
-FastMath:  0.58 ms  ← 3.2x faster!
+Xoshiro256**: 25.8x faster than java.util.Random!
+Perfect for: Monte Carlo, ML initialization, particle systems
+```
+
+### 3. Vector Operations: Batch is King
+```
+❌ Individual mul4x4: Java 3.21ms vs FastMath 7.38ms (slower)
+✅ Batch mul4x4VectorBatch(10K): Java 0.30ms vs FastMath 0.06ms (5x faster)
 ```
 
 ## 🏆 Speedup by Backend

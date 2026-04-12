@@ -22,7 +22,7 @@ public class FastMath {
     
     // GPU configuration
     private static final boolean GPU_ENABLED;
-    private static final int GPU_THRESHOLD;
+    static final int GPU_THRESHOLD;
     private static final boolean GPU_AVAILABLE;
     
     static {
