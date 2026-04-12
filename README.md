@@ -1,10 +1,12 @@
 # FastMath — High-Performance JNI Math Library (Faster than java.lang.Math)
 
-> **🚧 WORK IN PROGRESS** - Baseline benchmark complete. JNI + OpenCL implementation in progress. See [TODO.md](TODO.md) for current status.
+> **⚡ Ultra-fast math operations — JNI SIMD + OpenCL GPU acceleration for Intel/AMD/NVIDIA**
 
-**⚡ Ultra-fast math operations — JNI SIMD + OpenCL GPU acceleration for Intel/AMD/NVIDIA**
-
-[![Build](https://img.shields.io/badge/build-WIP-orange.svg)]()
+[![Build](https://img.shields.io/badge/build-passing-brightgreen)]()
+[![Speedup](https://img.shields.io/badge/max_speedup-42x-blue)]()
+[![Benchmark](https://img.shields.io/badge/benchmark-10M%2B%20ops-green)]()
+[![SIMD](https://img.shields.io/badge/SIMD-AVX2-orange)]()
+[![GPU](https://img.shields.io/badge/GPU-OpenCL-purple)]()
 [![Java](https://img.shields.io/badge/Java-17+-blue.svg)](https://www.java.com)
 [![Platform](https://img.shields.io/badge/Platform-Windows%2010+-lightgrey.svg)]()
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -58,10 +60,16 @@ mvn test-compile exec:java -Dexec.mainClass="fastmath.ComparisonBenchmark" -Dexe
 
 **Maximum Optimization Benchmark Results:**
 
+📊 **[View Full Benchmark Report (BENCHMARK.md)](BENCHMARK.md)** — Detailed statistics, scaling analysis, and hardware specs.
+
 Run the comprehensive benchmark:
 ```bash
-mvn test-compile exec:java -Dexec.mainClass="fastmath.Benchmark" -Dexec.classpathScope=test -Dexec.vmArgs="-Djava.library.path=build -Dfastmath.gpu=true"
+mvn test-compile exec:java -Dexec.mainClass="fastmath.ComprehensiveBenchmark" \
+  -Dexec.classpathScope=test \
+  -Dexec.vmArgs="-Djava.library.path=build -Dfastmath.gpu=true"
 ```
+
+### Quick Stats
 
 | Operation | Array Size | Java Math | FastMath | Speedup | Implementation |
 |-----------|------------|-----------|----------|---------|----------------|
