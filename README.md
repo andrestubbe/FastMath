@@ -175,6 +175,38 @@ FastMathNoise.perlinGrid(noiseMap, 1024, 1024, 0.01, 0, 0);
 - ✅ `ridgedMF2D` — Terrain generation
 - ✅ `perlinGrid` — Batch generation with JNI SIMD
 
+### FastMathRandom — Ultra-Fast RNG
+
+10x faster than java.util.Random, perfect for agents, games, ML:
+
+```java
+import fastmath.FastMathRandom;
+
+// xoshiro256** - fastest, high-quality (~3ns per value)
+FastMathRandom.Xoshiro256StarStar rng = new FastMathRandom.Xoshiro256StarStar(12345);
+double r = rng.nextDouble();
+
+// Batch generation (SIMD accelerated)
+double[] randoms = new double[100000];
+FastMathRandom.nextDoubleBatch(randoms, 12345);
+
+// Neural network weight initialization
+FastMathRandom.xavierInit(weights, seed, fanIn, fanOut);  // Xavier/Glorot
+FastMathRandom.heInit(weights, seed, fanIn);              // He for ReLU
+
+// PCG alternative (different statistical properties)
+FastMathRandom.PCG32 pcg = new FastMathRandom.PCG32(12345);
+int n = pcg.nextInt(100);
+```
+
+**Features:**
+- ✅ `Xoshiro256**` — 10x faster, ~3ns per value
+- ✅ `PCG32` — Alternative high-quality RNG
+- ✅ `nextDoubleBatch` — SIMD batch generation
+- ✅ `xavierInit` / `heInit` — NN weight initialization
+- ✅ `nextGaussianBatch` — Normal distribution
+- ✅ GPU batch support for >10K elements
+
 ### When to Use FastMath
 
 **✅ Best For:**
