@@ -99,6 +99,38 @@ mvn test-compile exec:java -Dexec.mainClass="fastmath.Benchmark" -Dexec.classpat
 - 2.45x speedup on `sqrt(array)` via AVX2 SIMD
 - **~10x speedup** on `fastInvSqrt()` via Quake bit-hack
 - **40x+ speedup** on 1M element arrays via OpenCL GPU
+- **NEW:** FastMathVectors - SIMD-optimized vector/matrix operations
+
+## FastMath Ecosystem
+
+### FastMathVectors — SIMD Vector & Matrix Math
+
+Drop-in for graphics, games, and ML vector operations:
+
+```java
+import fastmath.FastMathVectors;
+
+// 3D vector operations
+double dot = FastMathVectors.dot3(x1, y1, z1, x2, y2, z2);  // SIMD accelerated
+FastMathVectors.cross3(x1, y1, z1, x2, y2, z2, out);         // Cross product
+float invLen = FastMathVectors.fastInvLength3(x, y, z);       // Quake fast inv sqrt
+
+// 4x4 matrix operations (graphics transforms)
+double[] matrix = new double[16];
+double[] vertices = new double[1000 * 4];
+double[] transformed = new double[1000 * 4];
+
+FastMathVectors.identity4x4(matrix);
+FastMathVectors.translation4x4(10, 20, 30, matrix);
+FastMathVectors.mul4x4VectorBatch(matrix, vertices, transformed, 1000);  // SIMD batch
+```
+
+**Features:**
+- ✅ `dot3`, `cross3`, `length3` — 3D vector math
+- ✅ `mul4x4`, `mul4x4Vector` — Matrix transforms
+- ✅ `mul4x4VectorBatch` — Batch vertex transforms with prefetching
+- ✅ `normalize3Fast` — Quake fast normalization for games
+- ✅ AVX2 SIMD acceleration via JNI
 
 ### When to Use FastMath
 
