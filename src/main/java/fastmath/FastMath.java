@@ -178,6 +178,49 @@ public class FastMath {
         return NATIVE_AVAILABLE ? nativeRint(a) : Math.rint(a);
     }
     
+    public static long round(double a) {
+        return Math.round(a);  // Already fast, delegates to Math
+    }
+    
+    public static int round(float a) {
+        return Math.round(a);  // Already fast, delegates to Math
+    }
+    
+    // ============================================================================
+    // PUBLIC API - Abs, Min, Max (Commonly Used)
+    // ============================================================================
+    
+    public static int abs(int a) { return Math.abs(a); }
+    public static long abs(long a) { return Math.abs(a); }
+    public static float abs(float a) { return Math.abs(a); }
+    public static double abs(double a) { return Math.abs(a); }
+    
+    public static int max(int a, int b) { return Math.max(a, b); }
+    public static long max(long a, long b) { return Math.max(a, b); }
+    public static float max(float a, float b) { return Math.max(a, b); }
+    public static double max(double a, double b) { return Math.max(a, b); }
+    
+    public static int min(int a, int b) { return Math.min(a, b); }
+    public static long min(long a, long b) { return Math.min(a, b); }
+    public static float min(float a, float b) { return Math.min(a, b); }
+    public static double min(double a, double b) { return Math.min(a, b); }
+    
+    // ============================================================================
+    // PUBLIC API - Angle Conversion & Utility
+    // ============================================================================
+    
+    public static double toDegrees(double angrad) {
+        return Math.toDegrees(angrad);  // Already fast
+    }
+    
+    public static double toRadians(double angdeg) {
+        return Math.toRadians(angdeg);  // Already fast
+    }
+    
+    public static double hypot(double x, double y) {
+        return Math.hypot(x, y);  // sqrt(x²+y²) without overflow
+    }
+    
     // ============================================================================
     // PUBLIC API - Array Operations (Batch Processing)
     // ============================================================================
