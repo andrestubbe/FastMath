@@ -57,6 +57,27 @@ JNIEXPORT void JNICALL Java_fastmath_FastMath_gpuCosArray(JNIEnv *env, jclass cl
 JNIEXPORT void JNICALL Java_fastmath_FastMath_gpuExpArray(JNIEnv *env, jclass cls, jdoubleArray input, jdoubleArray output, jint len);
 JNIEXPORT void JNICALL Java_fastmath_FastMath_gpuLogArray(JNIEnv *env, jclass cls, jdoubleArray input, jdoubleArray output, jint len);
 
+// FastMathVectors - Vector and Matrix operations (SIMD optimized)
+JNIEXPORT jdouble JNICALL Java_fastmath_FastMathVectors_nativeDot3(JNIEnv *env, jclass cls,
+    jdouble x1, jdouble y1, jdouble z1, jdouble x2, jdouble y2, jdouble z2);
+JNIEXPORT void JNICALL Java_fastmath_FastMathVectors_nativeCross3(JNIEnv *env, jclass cls,
+    jdouble x1, jdouble y1, jdouble z1, jdouble x2, jdouble y2, jdouble z2,
+    jdoubleArray out);
+JNIEXPORT jdouble JNICALL Java_fastmath_FastMathVectors_nativeLength3(JNIEnv *env, jclass cls,
+    jdouble x, jdouble y, jdouble z);
+
+JNIEXPORT void JNICALL Java_fastmath_FastMathVectors_nativeMul4x4(JNIEnv *env, jclass cls,
+    jdoubleArray a, jdoubleArray b, jdoubleArray c);
+JNIEXPORT void JNICALL Java_fastmath_FastMathVectors_nativeMul4x4Vector(JNIEnv *env, jclass cls,
+    jdoubleArray m, jdoubleArray v, jdoubleArray out);
+JNIEXPORT void JNICALL Java_fastmath_FastMathVectors_nativeMul4x4VectorBatch(JNIEnv *env, jclass cls,
+    jdoubleArray m, jdoubleArray vectors, jdoubleArray out, jint count);
+
+JNIEXPORT void JNICALL Java_fastmath_FastMathVectors_nativeDot3Batch(JNIEnv *env, jclass cls,
+    jdoubleArray a, jdoubleArray b, jdoubleArray out, jint count);
+JNIEXPORT void JNICALL Java_fastmath_FastMathVectors_nativeLength3Batch(JNIEnv *env, jclass cls,
+    jdoubleArray vectors, jdoubleArray out, jint count);
+
 #ifdef __cplusplus
 }
 #endif
