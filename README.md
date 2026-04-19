@@ -1,4 +1,4 @@
-# FastMath — High-Performance JNI Math Library (Faster than java.lang.Math)
+# FastMath — High-Performance JNI Math Library (Faster than java.lang.Math) [ALPHA]
 
 > **⚡ Ultra-fast math operations — JNI SIMD + OpenCL GPU acceleration for Intel/AMD/NVIDIA**
 
