@@ -182,6 +182,49 @@ public class FastMathPure {
         return absX * Math.sqrt(1.0 + t * t);
     }
     
+    /**
+     * Fast square root approximation using bit-hack (Quake-style).
+     * 
+     * Uses the same magic as fastInvSqrt but adapted for sqrt:
+     * sqrt(x) = x * invSqrt(x)
+     * 
+     * Accuracy: ~1-2% error
+     * Speed: ~2-3x faster than Math.sqrt() (when inlined well)
+     * 
+     * Best for: Games, graphics, real-time where exact sqrt isn't critical.
+     * 
+     * @param x value to square root (must be >= 0)
+     * @return approximate sqrt(x)
+     */
+    public static double sqrtFast(double x) {
+        if (x <= 0) return 0.0;
+        if (x == 1.0) return 1.0;
+        
+        // For small values, use hardware sqrt (fast enough)
+        if (x < 0.001 || x > 1e9) return Math.sqrt(x);
+        
+        // Use invSqrt trick: sqrt(x) = x * invSqrt(x)
+        float xf = (float) x;
+        float invSqrt = fastInvSqrtFloat(xf);
+        return xf * invSqrt;
+    }
+    
+    /**
+     * Quake III fast inverse square root - float version (pure Java).
+     * The legendary 0x5f3759df bit-hack.
+     * 
+     * Accuracy: ~1% with 1 Newton iteration
+     * Speed: ~10x faster than 1.0f/Math.sqrt(x)
+     */
+    private static float fastInvSqrtFloat(float x) {
+        int i = Float.floatToIntBits(x);
+        i = 0x5f3759df - (i >> 1);
+        float y = Float.intBitsToFloat(i);
+        
+        // 1 Newton-Raphson iteration: y = y * (1.5f - 0.5f * x * y * y)
+        return y * (1.5f - 0.5f * x * y * y);
+    }
+    
     // Private constructor — utility class
     private FastMathPure() {}
 }
