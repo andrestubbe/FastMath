@@ -403,39 +403,9 @@ FastMath stands on the shoulders of giants:
 
 ---
 
-## Installation
+## 📦 Installation
 
-### Maven Central (Recommended)
-
-Add to your `pom.xml`:
-
-```xml
-<dependency>
-    <groupId>io.github.andrestubbe</groupId>
-    <artifactId>fastmath</artifactId>
-    <version>1.0.0</version>
-</dependency>
-```
-
-Or for Gradle (`build.gradle`):
-
-```groovy
-dependencies {
-    implementation 'io.github.andrestubbe:fastmath:1.0.0'
-}
-```
-
-Or for Gradle Kotlin (`build.gradle.kts`):
-
-```kotlin
-dependencies {
-    implementation("io.github.andrestubbe:fastmath:1.0.0")
-}
-```
-
-### JitPack (Alternative)
-
-Add repository:
+### Maven (JitPack)
 
 ```xml
 <repositories>
@@ -444,17 +414,33 @@ Add repository:
         <url>https://jitpack.io</url>
     </repository>
 </repositories>
-```
 
-Then dependency:
-
-```xml
 <dependency>
     <groupId>com.github.andrestubbe</groupId>
     <artifactId>fastmath</artifactId>
-    <version>1.0.0</version>
+    <version>v1.1.0</version>
 </dependency>
 ```
+
+### Gradle
+
+```groovy
+repositories {
+    maven { url 'https://jitpack.io' }
+}
+
+dependencies {
+    implementation 'com.github.andrestubbe:fastmath:v1.1.0'
+}
+```
+
+### Direct Download
+
+Download JAR from [Releases](https://github.com/andrestubbe/FastMath/releases)
+
+**Required:** FastCore is automatically included via Maven. For direct download, get both:
+- `fastmath-1.1.0.jar` — Main library
+- `fastcore-1.0.0.jar` — [JNI loader](https://github.com/andrestubbe/FastCore/releases)
 
 ### Try in 10 Seconds
 
@@ -467,21 +453,9 @@ mvn compile exec:java -Dexec.mainClass="fastmath.FastMathInspector"
 
 ---
 
-## Building from Source
+## Build from Source
 
-### Prerequisites
-- JDK 17+
-- Visual Studio 2019/2022 with C++ workload
-- Intel OpenCL runtime (for GPU support)
-
-### Build
-```bash
-# Compile native DLL
-compile.bat
-
-# Build Java + package
-mvn clean package
-```
+See [COMPILE.md](COMPILE.md) for detailed build instructions.
 
 ---
 
