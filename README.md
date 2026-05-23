@@ -1,4 +1,4 @@
-﻿# FastMath â€” Ultra-Fast Native Math Library for Java [v0.1.0]
+﻿# FastMath — Ultra-Fast Native Math Library for Java [v0.1.0]
 
 **A high-performance native math module for the FastJava ecosystem. SIMD-accelerated linear algebra, trigonometry, and interpolation.**
 
@@ -17,10 +17,10 @@
 - [License](#license)
 
 ## Features
-- **âš¡ SIMD Accelerated**: Vector and Matrix operations via AVX2/SSE.
-- **ðŸ“ˆ Native Trig**: High-speed trigonometric functions optimized for throughput.
-- **ðŸ“¦ Zero GC Stalls**: Minimal object creation for high-frequency math.
-- **ðŸš€ Raw Speed**: Built for developers who need maximum mathematical performance.
+- **⚡ SIMD Accelerated**: Vector and Matrix operations via AVX2/SSE.
+- **📈 Native Trig**: High-speed trigonometric functions optimized for throughput.
+- **📦 Zero GC Stalls**: Minimal object creation for high-frequency math.
+- **🚀 Raw Speed**: Built for developers who need maximum mathematical performance.
 
 ## Installation
 
@@ -75,9 +75,9 @@ Download the latest JARs directly to add them to your classpath:
 
 
 ## License
-MIT License â€” See [LICENSE](LICENSE) for details.
+MIT License — See [LICENSE](LICENSE) for details.
 
 ---
-**Part of the FastJava Ecosystem** â€” *Making the JVM faster.*
+**Part of the FastJava Ecosystem** — *Making the JVM faster.*
 
 
