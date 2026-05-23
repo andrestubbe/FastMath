@@ -59,15 +59,7 @@ public class FastMath {
         }
     }
     
-    /**
-     * Initialize OpenCL context (placeholder for actual implementation)
-     */
-    private static boolean initOpenCL() {
-        // TODO: Actual OpenCL initialization
-        // For now, return false until OpenCL is fully implemented
-        return false;
-    }
-    
+
     /**
      * Check if native SIMD acceleration is available
      */
