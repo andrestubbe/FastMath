@@ -6,16 +6,15 @@
 [![Platform](https://img.shields.io/badge/Platform-Windows%2010+-lightgrey.svg)]()
 [![JitPack](https://img.shields.io/badge/JitPack-ready-green.svg)](https://jitpack.io/#andrestubbe)
 
+---
+
 **⚡A high-performance native math module for the FastJava ecosystem. SIMD-accelerated linear algebra, trigonometry, and interpolation.**
 
 FastMath delivers elite mathematical performance by leveraging native SIMD instructions (AVX2/SSE). Built for graphics engines, physics simulations, and high-performance computing.
 
-
-
+---
 
 [![FastKeyboard Showcase](docs/screenshot.png)](https://www.youtube.com/watch?v=BZsqQl7WqWk)
-
-
 
 ---
 
