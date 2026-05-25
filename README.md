@@ -63,14 +63,11 @@ Add the JitPack repository and the dependencies to your `pom.xml`:
 </repositories>
 
 <dependencies>
-    <!-- FastMath Library -->
     <dependency>
         <groupId>com.github.andrestubbe</groupId>
         <artifactId>fastmath</artifactId>
         <version>v0.1.0</version>
     </dependency>
-
-    <!-- FastCore (Required Native Loader) -->
     <dependency>
         <groupId>com.github.andrestubbe</groupId>
         <artifactId>fastcore</artifactId>
@@ -97,8 +94,6 @@ Download the latest JARs directly to add them to your classpath:
 1. 📦 **[fastmath-v0.1.0.jar](https://github.com/andrestubbe/FastMath/releases/download/v0.1.0/fastmath-v0.1.0.jar)** (The Core Library)
 2. ⚙️ **[fastcore-v0.1.0.jar](https://github.com/andrestubbe/FastCore/releases/download/v0.1.0/fastcore-v0.1.0.jar)** (The Mandatory Native Loader)
 
-> [!IMPORTANT]
-> All JARs must be in your classpath for the native JNI calls to function correctly.
 
 ---
 
