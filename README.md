@@ -26,6 +26,21 @@ FastMath delivers elite mathematical performance by leveraging native SIMD instr
 
 ---
 
+## Quick Start
+
+```java
+import fastjson.FastJSON;
+import fastjson.FastJsonValue;
+
+public class Demo {
+    public static void main(String[] args) {
+        // TODO
+    }
+}
+```
+
+---
+
 ## Features
 - **⚡ SIMD Accelerated**: Vector and Matrix operations via AVX2/SSE.
 - **📈 Native Trig**: High-speed trigonometric functions optimized for throughput.
