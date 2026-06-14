@@ -1,4 +1,4 @@
-# FastMath 0.1.0 [ALPHA-2026-06] — � Ultra-Fast Native Math Library for Java
+﻿# FastMath 0.1.0 [ALPHA-2026-06-14] — Ultra-Fast Native Math Library for Java
 
 [![Status](https://img.shields.io/badge/status-0.1.0-brightgreen.svg)](https://github.com/andrestubbe/FastMath/releases/tag/0.1.0)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
