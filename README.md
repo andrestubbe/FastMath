@@ -1,4 +1,4 @@
-﻿# FastMath 0.1.0 [ALPHA-2026-06-14] — Ultra-Fast Native Math Library for Java
+﻿# FastMath 0.1.0 [ALPHA] — Ultra-Fast Native Math Library for Java
 
 [![Status](https://img.shields.io/badge/status-0.1.0-brightgreen.svg)](https://github.com/andrestubbe/FastMath/releases/tag/0.1.0)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -8,7 +8,7 @@
 
 ---
 
-**?A high-performance native math module for the FastJava ecosystem. SIMD-accelerated linear algebra, trigonometry, and interpolation.**
+**⚡A high-performance native math module for the FastJava ecosystem. SIMD-accelerated linear algebra, trigonometry, and interpolation.**
 
 FastMath delivers elite mathematical performance by leveraging native SIMD instructions (AVX2/SSE). Built for graphics engines, physics simulations, and high-performance computing.
 
@@ -41,10 +41,10 @@ public class Demo {
 ---
 
 ## Features
-- **? SIMD Accelerated**: Vector and Matrix operations via AVX2/SSE.
-- **?? Native Trig**: High-speed trigonometric functions optimized for throughput.
-- **?? Zero GC Stalls**: Minimal object creation for high-frequency math.
-- **?? Raw Speed**: Built for developers who need maximum mathematical performance.
+- **⚡ SIMD Accelerated**: Vector and Matrix operations via AVX2/SSE.
+- **📈 Native Trig**: High-speed trigonometric functions optimized for throughput.
+- **📦 Zero GC Stalls**: Minimal object creation for high-frequency math.
+- **🚀 Raw Speed**: Built for developers who need maximum mathematical performance.
 
 ---
 
@@ -90,24 +90,24 @@ dependencies {
 ### Option 3: Direct Download (No Build Tool)
 Download the latest JARs directly to add them to your classpath:
 
-1. ?? **[fastmath-0.1.0.jar](https://github.com/andrestubbe/FastMath/releases/download/0.1.0/fastmath-0.1.0.jar)** (The Core Library)
-2. ?? **[fastcore-0.1.0.jar](https://github.com/andrestubbe/FastCore/releases/download/0.1.0/fastcore-0.1.0.jar)** (The Mandatory Native Loader)
+1. 📦 **[fastmath-0.1.0.jar](https://github.com/andrestubbe/FastMath/releases/download/0.1.0/fastmath-0.1.0.jar)** (The Core Library)
+2. ⚙️ **[fastcore-0.1.0.jar](https://github.com/andrestubbe/FastCore/releases/download/0.1.0/fastcore-0.1.0.jar)** (The Mandatory Native Loader)
 
 
 ---
 
 ## License
-MIT License � See [LICENSE](LICENSE) file for details.
+MIT License — See [LICENSE](LICENSE) file for details.
 
 ---
 
 ## Related Projects
-- [FastCore](https://github.com/andrestubbe/FastCore) � Native Library Loader for Java
-- [FastMath](https://github.com/andrestubbe/FastMath) � High-performance RawInput engine
-- [FastTheme](https://github.com/andrestubbe/FastTheme) � Advanced UI styling engine
+- [FastCore](https://github.com/andrestubbe/FastCore) — Native Library Loader for Java
+- [FastMath](https://github.com/andrestubbe/FastMath) — High-performance RawInput engine
+- [FastTheme](https://github.com/andrestubbe/FastTheme) — Advanced UI styling engine
 
 ---
-**Part of the FastJava Ecosystem** � *Making the JVM faster. Small package. Maximum speed. Zero bloat. ????*
+**Part of the FastJava Ecosystem** — *Making the JVM faster. Small package. Maximum speed. Zero bloat. 🚀📋*
 
 
 
