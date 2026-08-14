@@ -18,13 +18,6 @@ FastMath delivers elite mathematical performance by leveraging native SIMD instr
 
 ---
 
-## Table of Contents
-- [Features](#features)
-- [Installation](#installation)
-- [License](#license)
-
----
-
 ## Quick Start
 
 ```java
@@ -39,6 +32,16 @@ public class Demo {
 ```
 
 ---
+
+---
+
+## Table of Contents
+- [Features](#features)
+- [Installation](#installation)
+- [License](#license)
+
+---
+
 
 ## Features
 - **⚡ SIMD Accelerated**: Vector and Matrix operations via AVX2/SSE.
