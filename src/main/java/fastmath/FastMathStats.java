@@ -481,7 +481,7 @@ public class FastMathStats {
      * Exponential Moving Average (EMA).
      * 
      * @param data Price data
-     * @param alpha Smoothing factor (0 < alpha < 1)
+     * @param alpha Smoothing factor (0 &lt; alpha &lt; 1)
      * @param ema Output array (same length as data)
      */
     public static void ema(double[] data, double alpha, double[] ema) {
