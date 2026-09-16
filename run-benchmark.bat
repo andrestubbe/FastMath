@@ -1,30 +1,17 @@
 @echo off
-setlocal
-chcp 65001 > nul
+chcp 65001 >nul
 cd /d "%~dp0"
-set "MAVEN_OPTS=--enable-native-access=ALL-UNNAMED --sun-misc-unsafe-memory-access=allow -Dorg.slf4j.simpleLogger.defaultLogLevel=warn"
 
-echo ===================================================
-echo  Building FastMath ^& JMH Benchmarks Uber-Jar
-echo ===================================================
+echo [1/3] Building FastMath...
+call mvn clean install -DskipTests "-Dgpg.skip=true" -q
+if %ERRORLEVEL% NEQ 0 ( echo [ERROR] Build failed! & pause & exit /b %ERRORLEVEL% )
 
-call mvn -q clean install -DskipTests 2>nul
-if %ERRORLEVEL% NEQ 0 (
-    echo [ERROR] FastMath install failed!
-    pause
-    exit /b %ERRORLEVEL%
-)
-
+echo [2/3] Building Benchmark Uber-JAR...
 cd examples\Benchmark
-call mvn -q clean package 2>nul
-if %ERRORLEVEL% NEQ 0 (
-    echo [ERROR] Benchmark packaging failed!
-    pause
-    exit /b %ERRORLEVEL%
-)
+call mvn clean package -DskipTests -q
+if %ERRORLEVEL% NEQ 0 ( echo [ERROR] Benchmark build failed! & pause & exit /b %ERRORLEVEL% )
 
-echo ===================================================
-echo  Running JMH Benchmarks (Throughput: ops/ms)
-echo ===================================================
+echo [3/3] Running JMH Benchmarks...
 java --enable-native-access=ALL-UNNAMED --sun-misc-unsafe-memory-access=allow "-Djava.library.path=..\..\build;build;src\main\resources\native" -jar target\benchmarks.jar -f 1 -wi 2 -i 3 -tu ms -bm thrpt
+cd ..\..
 pause
