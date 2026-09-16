@@ -199,11 +199,10 @@ Download pre-compiled release JARs directly from [GitHub Releases](https://githu
 ## Platform Support
 
 | Platform | Architecture | Status | Notes |
-|:---|:---|:---|:---|
-| Windows | x86-64 | Supported | Fully tested on Windows 10/11 with AVX2 SIMD acceleration |
-| Linux | x86-64 | Planned | Native AVX2 library compilation in progress |
-| macOS | Apple Silicon (arm64) | Planned | ARM NEON vector engine planned |
-| macOS | Intel (x86-64) | Planned | Planned x86-64 support |
+|:---|:---:|:---:|:---|
+| **Windows 10 / 11** | x64 | ✅ Fully Supported | AVX2 SIMD vector acceleration & fast trigonometric math |
+| **Linux** | x64 / AArch64 | 🚧 Planned | Pure Java fallback active; native AVX2 library in progress |
+| **macOS** | Apple Silicon / x64 | 🚧 Planned | Pure Java fallback active; ARM NEON vector engine planned |
 
 ---
 
@@ -218,7 +217,7 @@ Download pre-compiled release JARs directly from [GitHub Releases](https://githu
 
 ## License
 
-This project is licensed under the MIT License: see the [LICENSE](LICENSE) file for details.
+MIT License — See [LICENSE](LICENSE) file for details.
 
 ---
 
